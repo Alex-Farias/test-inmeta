@@ -225,7 +225,7 @@ rodam.
     de controle `migrations` (`No migrations are pending`, exit 0), não aplicação de
     migration. A parte do aceite que depende de haver migration é exercida pela TASK-012.
 
-- [ ] **TASK-005** · P0 · `shared` · adiciona hierarquia de erros de dominio
+- [x] **TASK-005** · P0 · `shared` · adiciona hierarquia de erros de dominio
   - Requisitos: REQ-19.2
   - Depende de: TASK-001
   - Aceite: `DomainError` e as cinco subclasses de D-08 existem, cada uma expondo seu código
