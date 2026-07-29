@@ -187,9 +187,9 @@ rodam.
     repositório e literal casando `/DELETE\s+FROM/i`; `npm run lint` falha ao introduzir
     qualquer das duas
   - Teste: verificação por lint — a regra é o próprio teste, executada a cada commit
-  - Commit: `chore(infra)`
+  - Commit: `chore(infra)` · `fb78d18`
 
-- [ ] **TASK-078** · P1 · `infra` · separa suites de teste unitaria e de integracao
+- [x] **TASK-078** · P1 · `infra` · separa suites de teste unitaria e de integracao
   - Requisitos: REQ-00
   - Depende de: TASK-001
   - Aceite: `npm test` roda só unitários; `npm run test:integration` usa projeto Jest próprio,
