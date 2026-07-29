@@ -219,7 +219,7 @@ rodam.
   - Aceite: `npm run migration:run` aplica em banco limpo; `synchronize` e `migrationsRun`
     são `false` em toda configuração (D-11)
   - Teste: verificação manual documentada no README
-  - Commit: `chore(db)`
+  - Commit: `chore(db)` · `79915b6`
   - **Ressalva do aceite.** Não existe migration alguma neste ponto — a primeira nasce na
     TASK-012. O que `migration:run` provou aqui foi conexão, autenticação e criação da tabela
     de controle `migrations` (`No migrations are pending`, exit 0), não aplicação de

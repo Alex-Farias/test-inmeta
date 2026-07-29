@@ -506,10 +506,58 @@ global. Controllers nunca lançam `HttpException`.
   "statusCode": 409,
   "error": "CONCURRENT_SUBMISSION",
   "message": "Já existe um envio ativo em processamento para este documento.",
-  "requestId": "01J…",
+  "requestId": "9f1c2e44-7b3a-4d18-9c2f-1a5e8b0d3c77",
   "timestamp": "2026-07-27T12:00:00.000Z"
 }
 ```
+
+**Formato do `requestId`.** UUID v4, gerado por `crypto.randomUUID()` — sem dependência nova.
+Uma versão anterior desta seção trazia `"01J…"`, formato de ULID, sem que `stack.md` listasse
+biblioteca que o produzisse: o documento contradizia a implementação já no primeiro uso.
+ULID seria ordenável por tempo, o que ajuda a localizar a linha no log, mas REQ-19.3 pede
+apenas um identificador que permita localizar a requisição, e o `timestamp` do próprio
+payload já dá a ordenação.
+
+**Origem do `requestId`.** Gerado em **middleware**, não no exception filter. Se nascesse no
+filter, apenas respostas de erro teriam identificador, e REQ-20.3 — que exige o mesmo id em
+todos os logs da requisição, inclusive nas bem-sucedidas — obrigaria a mover a geração
+depois. O middleware honra `x-request-id` de entrada quando presente, para não quebrar
+correlação com quem chama de fora, e ecoa o valor no cabeçalho `X-Request-Id`. O filter
+apenas lê o que já está anexado à requisição.
+
+**A sexta chave, opcional: `details`.** REQ-19.6 exige indicar **quais** campos foram
+recusados na validação, e nenhuma das cinco chaves fixas carrega essa informação. Colocar os
+nomes dentro de `message` obrigaria o cliente a fazer parsing de string — exatamente o que
+REQ-19 diz querer evitar.
+
+`details` está presente **apenas** em `VALIDATION_ERROR`. As cinco chaves fixas continuam
+sempre presentes; o formato segue estável porque a ausência é a norma e a presença é
+declarada por tipo de erro.
+
+```jsonc
+{
+  "statusCode": 400,
+  "error": "VALIDATION_ERROR",
+  "message": "Entrada inválida.",
+  "details": [
+    { "field": "email", "reasons": ["email deve ser um e-mail válido"] },
+    { "field": "endereco.cep", "reasons": ["cep deve ter 8 dígitos"] },
+    { "field": "apelido", "reasons": ["campo não reconhecido"] }
+  ],
+  "requestId": "9f1c2e44-7b3a-4d18-9c2f-1a5e8b0d3c77",
+  "timestamp": "2026-07-27T12:00:00.000Z"
+}
+```
+
+Três regras de contrato:
+
+- **`details` é array, não objeto indexado por campo.** Preserva a ordem em que a validação
+  recusou os campos e permite o mesmo campo aparecer mais de uma vez.
+- **Campo aninhado usa caminho com ponto** (`endereco.cep`). O `class-validator` devolve erro
+  aninhado em árvore; o mapeamento achata para esse formato.
+- **Nenhum outro tipo de erro carrega `details`** por enquanto. Contrato estreito é mais fácil
+  de ampliar depois do que de restringir — uma vez que um cliente passe a ler `details` em
+  erro de conflito, tirá-lo vira quebra de contrato.
 
 **Alternativa descartada.** Lançar `HttpException` direto do service. Menos código e acopla
 a regra de negócio ao protocolo: a mesma regra deixaria de ser reaproveitável fora de HTTP, e
