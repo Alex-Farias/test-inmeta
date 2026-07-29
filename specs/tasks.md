@@ -245,9 +245,9 @@ rodam.
   - Depende de: TASK-006
   - Aceite: "O sistema DEVE incluir em toda resposta de erro um identificador da requisição"
   - Teste: `exception.filter.spec.ts` → "inclui requestId no payload de erro"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `6aafa8a`
 
-- [ ] **TASK-008** · P0 · `shared` · responde 500 sem vazar detalhe interno em erro nao mapeado
+- [x] **TASK-008** · P0 · `shared` · responde 500 sem vazar detalhe interno em erro nao mapeado
   - Requisitos: REQ-19.4, REQ-19.5
   - Depende de: TASK-007
   - Aceite: "SE ocorrer falha não prevista, ENTÃO o sistema DEVE responder com erro genérico

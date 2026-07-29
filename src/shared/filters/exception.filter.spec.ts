@@ -1,4 +1,10 @@
-import { ArgumentsHost, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 
 import {
   BusinessRuleError,
@@ -58,6 +64,19 @@ const mapeamento: ReadonlyArray<[string, () => DomainError, HttpStatus]> = [
 
 describe('DomainExceptionFilter', () => {
   const filter = new DomainExceptionFilter();
+
+  // Silenciado em todos os casos: o filter registra falha nao prevista de
+  // verdade, e sem isto a saida da suite fica coberta de stack esperada. Os
+  // casos que precisam conferir o registro inspecionam este mesmo espiao.
+  let registrarErro: jest.SpyInstance;
+
+  beforeEach(() => {
+    registrarErro = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    registrarErro.mockRestore();
+  });
 
   it('traduz cada DomainError para seu status HTTP', () => {
     const obtido = mapeamento.map(([nome, criar]) => {
@@ -126,6 +145,66 @@ describe('DomainExceptionFilter', () => {
 
     expect(capturado.status).toBe(403);
     expect(capturado.corpo.error).toBe('FORBIDDEN');
+  });
+
+  it('responde 500 genérico sem expor stack', () => {
+    // Um erro de driver realista: traz consulta, nome de tabela e constraint.
+    const erroDeDriver = Object.assign(
+      new Error(
+        'duplicate key value violates unique constraint "uq_employees_email" — ' +
+          'INSERT INTO "employees"("email") VALUES ($1)',
+      ),
+      { code: '23505', table: 'employees', constraint: 'uq_employees_email' },
+    );
+
+    const { host, capturado } = dublarHost();
+    filter.catch(erroDeDriver, host);
+
+    expect(capturado.status).toBe(500);
+    expect(capturado.corpo.error).toBe('INTERNAL_ERROR');
+
+    // O corpo inteiro serializado nao pode conter nenhum vestigio interno.
+    const serializado = JSON.stringify(capturado.corpo);
+    for (const vestigio of [
+      'uq_employees_email',
+      'INSERT INTO',
+      'employees',
+      '23505',
+      'duplicate key',
+      'at Object',
+    ]) {
+      expect(serializado).not.toContain(vestigio);
+    }
+    expect(capturado.corpo).not.toHaveProperty('stack');
+  });
+
+  it('registra a stack completa associada ao requestId da resposta', () => {
+    const erro = new Error('falha crua de terceiro');
+    const { host, capturado } = dublarHost('id-para-correlacionar');
+
+    filter.catch(erro, host);
+
+    expect(registrarErro).toHaveBeenCalledTimes(1);
+    const chamada = registrarErro.mock.calls[0] as unknown[];
+    const mensagem = String(chamada[0]);
+    const stack = String(chamada[1]);
+
+    // O par que fecha o caminho: o id que o cliente ve na resposta e o mesmo
+    // que aparece na linha de log que carrega a stack (D-08).
+    expect(mensagem).toContain('id-para-correlacionar');
+    expect(capturado.corpo.requestId).toBe('id-para-correlacionar');
+    expect(stack).toContain('falha crua de terceiro');
+    expect(stack).toContain('exception.filter.spec.ts');
+  });
+
+  it('não registra erro de domínio como falha não prevista', () => {
+    const { host } = dublarHost();
+
+    filter.catch(new EntityNotFoundError(), host);
+
+    // 404 de recurso ausente e operacao normal. Registrar como falha encheria o
+    // log de ruido e esconderia as falhas reais.
+    expect(registrarErro).not.toHaveBeenCalled();
   });
 
   it('inclui details apenas quando o erro de validação os traz', () => {

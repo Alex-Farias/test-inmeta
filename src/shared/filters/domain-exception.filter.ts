@@ -1,4 +1,11 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 import { DomainError, ValidationError } from '../errors';
@@ -33,8 +40,13 @@ export interface CorpoDeErro {
  * HttpException do proprio Nest respondendo noutro formato, e a promessa de
  * estabilidade valeria so para os erros que nos escrevemos.
  */
+/** Mensagem fixa do 500. Deliberadamente sem nenhuma informacao do erro real. */
+const MENSAGEM_ERRO_INTERNO = 'Erro interno. Consulte o suporte informando o requestId.';
+
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(DomainExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const contexto = host.switchToHttp();
     const response = contexto.getResponse<Response>();
@@ -42,9 +54,26 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
     // Apenas le. A geracao e do RequestIdMiddleware — ver o comentario la sobre
     // por que ela nao pode morar aqui.
-    const corpo = this.montarCorpo(exception, request.requestId ?? '');
+    const requestId = request.requestId ?? '';
+    const corpo = this.montarCorpo(exception, requestId);
+
+    if (corpo.error === 'INTERNAL_ERROR') {
+      this.registrarFalhaNaoPrevista(exception, requestId);
+    }
 
     response.status(corpo.statusCode).json(corpo);
+  }
+
+  /**
+   * REQ-19.5: a resposta e generica, mas o rastreamento completo precisa existir
+   * em algum lugar. Vai para o log com o mesmo requestId da resposta — e esse
+   * par que permite pegar o id que o cliente reportou e achar a stack.
+   */
+  private registrarFalhaNaoPrevista(exception: unknown, requestId: string): void {
+    const stack = exception instanceof Error ? exception.stack : undefined;
+    const descricao = exception instanceof Error ? exception.message : String(exception);
+
+    this.logger.error(`Falha nao prevista [requestId=${requestId}]: ${descricao}`, stack);
   }
 
   private montarCorpo(exception: unknown, requestId: string): CorpoDeErro {
@@ -77,10 +106,13 @@ export class DomainExceptionFilter implements ExceptionFilter {
       };
     }
 
+    // Falha nao prevista. A resposta NAO carrega a mensagem do erro original
+    // (REQ-19.4): erro de driver traz nome de tabela e trecho da consulta, e
+    // repassa-lo seria vazar o schema para quem provocou a falha.
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'INTERNAL_ERROR',
-      message: 'Erro interno.',
+      message: MENSAGEM_ERRO_INTERNO,
       requestId,
       timestamp,
     };
