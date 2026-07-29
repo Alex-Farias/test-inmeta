@@ -1,0 +1,37 @@
+# dependências
+node_modules/
+
+# build
+dist/
+build/
+
+# ambiente — nunca versionado
+.env
+.env.*
+!.env.example
+
+# cobertura de testes
+coverage/
+
+# dumps de banco — nunca versionados.
+# *.sql não entra aqui: D-11 prevê SQL escrito à mão em migration.
+*.dump
+*.sql.gz
+dumps/
+
+# logs
+*.log
+npm-debug.log*
+
+# SO e editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# enunciado do desafio — material de terceiros (ver CLAUDE.md)
+docs/desafio.md
+
+# Claude Code: settings.json É versionado; só o override local fica de fora.
+# NÃO ignorar .claude/ — a skill spec-flow faz parte da entrega e mostra
+# como o trabalho foi conduzido. Templates padrão excluem este diretório.
+.claude/settings.local.json
