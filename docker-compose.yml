@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: documentacao-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-documentacao}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      # Montagem em /var/lib/postgresql, nao em .../data. A imagem 18+ guarda os
+      # dados em subdiretorio por major e recusa subir com o layout antigo, para
+      # que `pg_upgrade --link` nao esbarre em limite de mount.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      # A aplicacao e as migrations dependem do banco aceitar conexao, nao do
+      # container existir. `depends_on: service_healthy` so tem o que esperar
+      # se este healthcheck existir.
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-documentacao}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres-data:

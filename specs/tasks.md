@@ -195,9 +195,9 @@ rodam.
   - Aceite: `npm test` roda só unitários; `npm run test:integration` usa projeto Jest próprio,
     sem colidir com a suíte unitária
   - Teste: verificação manual documentada no README
-  - Commit: `chore(infra)`
+  - Commit: `chore(infra)` · `8592095`
 
-- [ ] **TASK-002** · P1 · `infra` · adiciona docker-compose com postgres 18
+- [x] **TASK-002** · P1 · `infra` · adiciona docker-compose com postgres 18
   - Requisitos: REQ-00
   - Depende de: TASK-001
   - Aceite: `docker compose up -d` sobe Postgres 18 aceitando conexão na porta configurada
