@@ -4,7 +4,13 @@
     // Fixo a raiz. Sem isso o tsc infere a raiz comum dos arquivos de entrada,
     // e qualquer .ts de configuracao na raiz do projeto empurra a saida para
     // dist/src/, quebrando `node dist/main`.
-    "rootDir": "./src"
+    "rootDir": "./src",
+
+    // Incremental desligado no build. `deleteOutDir` do nest-cli apaga o dist,
+    // mas o .tsbuildinfo sobrevive e diz ao tsc que a saida ja esta em dia — o
+    // resultado e um dist so com .d.ts, que falha no `node dist/main` e nao no
+    // build. Os dois recursos se anulam; o que garante saida correta fica.
+    "incremental": false
   },
   "exclude": ["node_modules", "test", "dist", "jest.config.ts", "**/*spec.ts"]
 }

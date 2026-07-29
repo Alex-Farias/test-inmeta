@@ -211,15 +211,19 @@ rodam.
     sistema DEVE falhar imediatamente na inicialização, com mensagem que identifique o item
     faltante"
   - Teste: `env.validation.spec.ts` → "falha na inicialização identificando a variável ausente"
-  - Commit: `chore(infra)`
+  - Commit: `chore(infra)` · `b91c2a1`
 
-- [ ] **TASK-004** · P1 · `db` · configura typeorm com data source e migrations
+- [x] **TASK-004** · P1 · `db` · configura typeorm com data source e migrations
   - Requisitos: REQ-00.4
   - Depende de: TASK-002, TASK-003
   - Aceite: `npm run migration:run` aplica em banco limpo; `synchronize` e `migrationsRun`
     são `false` em toda configuração (D-11)
   - Teste: verificação manual documentada no README
   - Commit: `chore(db)`
+  - **Ressalva do aceite.** Não existe migration alguma neste ponto — a primeira nasce na
+    TASK-012. O que `migration:run` provou aqui foi conexão, autenticação e criação da tabela
+    de controle `migrations` (`No migrations are pending`, exit 0), não aplicação de
+    migration. A parte do aceite que depende de haver migration é exercida pela TASK-012.
 
 - [ ] **TASK-005** · P0 · `shared` · adiciona hierarquia de erros de dominio
   - Requisitos: REQ-19.2

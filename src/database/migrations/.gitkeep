@@ -1,0 +1,2 @@
+# Migrations do TypeORM. Indice parcial e CHECK exigem migration:create com SQL
+# escrito a mao — migration:generate nao os produz (D-11).
