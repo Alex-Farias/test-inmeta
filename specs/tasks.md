@@ -202,9 +202,9 @@ rodam.
   - Depende de: TASK-001
   - Aceite: `docker compose up -d` sobe Postgres 18 aceitando conexão na porta configurada
   - Teste: verificação manual documentada no README
-  - Commit: `chore(infra)`
+  - Commit: `chore(infra)` · `5b2d9fc`
 
-- [ ] **TASK-003** · P1 · `infra` · adiciona validacao de variaveis de ambiente
+- [x] **TASK-003** · P1 · `infra` · adiciona validacao de variaveis de ambiente
   - Requisitos: REQ-00.3
   - Depende de: TASK-078
   - Aceite: "QUANDO o sistema é iniciado com configuração obrigatória ausente ou inválida, o

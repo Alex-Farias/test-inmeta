@@ -1,4 +1,10 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "compilerOptions": {
+    // Fixo a raiz. Sem isso o tsc infere a raiz comum dos arquivos de entrada,
+    // e qualquer .ts de configuracao na raiz do projeto empurra a saida para
+    // dist/src/, quebrando `node dist/main`.
+    "rootDir": "./src"
+  },
+  "exclude": ["node_modules", "test", "dist", "jest.config.ts", "**/*spec.ts"]
 }

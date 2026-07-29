@@ -12,6 +12,9 @@ const config: Config = {
   rootDir: '.',
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
+  // Decorators de class-validator e do Nest leem metadata em runtime. Fora do
+  // bootstrap da aplicacao ninguem carrega reflect-metadata por nos.
+  setupFiles: ['reflect-metadata'],
   testRegex: '\\.spec\\.ts$',
   testPathIgnorePatterns: ['\\.integration\\.spec\\.ts$'],
   transform: {

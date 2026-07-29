@@ -13,6 +13,8 @@ const config: Config = {
   rootDir: '..',
   roots: ['<rootDir>/src', '<rootDir>/test/integration'],
   testEnvironment: 'node',
+  // Mesma razao da suite unitaria: decorators leem metadata em runtime.
+  setupFiles: ['reflect-metadata'],
   testRegex: '\\.integration\\.spec\\.ts$',
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
