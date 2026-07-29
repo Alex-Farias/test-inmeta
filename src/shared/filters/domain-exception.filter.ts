@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { DomainError, ValidationError } from '../errors';
 
@@ -23,6 +23,7 @@ export interface CorpoDeErro {
   error: string;
   message: string;
   details?: unknown;
+  requestId: string;
   timestamp: string;
 }
 
@@ -35,13 +36,18 @@ export interface CorpoDeErro {
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
-    const response = host.switchToHttp().getResponse<Response>();
-    const corpo = this.montarCorpo(exception);
+    const contexto = host.switchToHttp();
+    const response = contexto.getResponse<Response>();
+    const request = contexto.getRequest<Request>();
+
+    // Apenas le. A geracao e do RequestIdMiddleware — ver o comentario la sobre
+    // por que ela nao pode morar aqui.
+    const corpo = this.montarCorpo(exception, request.requestId ?? '');
 
     response.status(corpo.statusCode).json(corpo);
   }
 
-  private montarCorpo(exception: unknown): CorpoDeErro {
+  private montarCorpo(exception: unknown, requestId: string): CorpoDeErro {
     const timestamp = new Date().toISOString();
 
     if (exception instanceof DomainError) {
@@ -53,6 +59,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
         ...(exception instanceof ValidationError && exception.details.length > 0
           ? { details: exception.details }
           : {}),
+        requestId,
         timestamp,
       };
     }
@@ -65,6 +72,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
         statusCode: exception.getStatus(),
         error: HttpStatus[exception.getStatus()] ?? 'HTTP_ERROR',
         message: exception.message,
+        requestId,
         timestamp,
       };
     }
@@ -73,6 +81,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'INTERNAL_ERROR',
       message: 'Erro interno.',
+      requestId,
       timestamp,
     };
   }

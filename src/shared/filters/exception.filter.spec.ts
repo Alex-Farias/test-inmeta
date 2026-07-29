@@ -19,7 +19,10 @@ interface RespostaCapturada {
  * Dubla apenas o que o filter consome do ArgumentsHost. Um TestingModule
  * completo aqui exigiria subir HTTP para provar uma tabela de traducao.
  */
-function dublarHost(): { host: ArgumentsHost; capturado: RespostaCapturada } {
+function dublarHost(requestId = 'req-de-teste'): {
+  host: ArgumentsHost;
+  capturado: RespostaCapturada;
+} {
   const capturado: RespostaCapturada = { status: 0, corpo: {} };
 
   const response = {
@@ -36,7 +39,8 @@ function dublarHost(): { host: ArgumentsHost; capturado: RespostaCapturada } {
   const host = {
     switchToHttp: () => ({
       getResponse: () => response,
-      getRequest: () => ({ headers: {} }),
+      // Ja anexado pelo RequestIdMiddleware, que roda antes de qualquer filter.
+      getRequest: () => ({ headers: {}, requestId }),
     }),
   } as unknown as ArgumentsHost;
 
@@ -82,16 +86,36 @@ describe('DomainExceptionFilter', () => {
       const { host, capturado } = dublarHost();
       filter.catch(excecao, host);
 
-      expect(Object.keys(capturado.corpo).sort()).toEqual(
-        ['error', 'message', 'statusCode', 'timestamp'],
-        // A mensagem do expect nao aceita contexto extra; o describe cobre.
-      );
+      expect(Object.keys(capturado.corpo).sort()).toEqual([
+        'error',
+        'message',
+        'requestId',
+        'statusCode',
+        'timestamp',
+      ]);
       expect(typeof capturado.corpo.error).toBe('string');
       expect(capturado.status).toBeGreaterThanOrEqual(400);
       expect(new Date(capturado.corpo.timestamp as string).toISOString()).toBe(
         capturado.corpo.timestamp,
       );
       expect(descricao).toBeTruthy();
+    }
+  });
+
+  it('inclui requestId no payload de erro', () => {
+    const origens: unknown[] = [
+      new EntityNotFoundError(),
+      new NotFoundException('Rota inexistente'),
+      new Error('coisa inesperada'),
+    ];
+
+    for (const excecao of origens) {
+      const { host, capturado } = dublarHost('9f1c2e44-7b3a-4d18-9c2f-1a5e8b0d3c77');
+      filter.catch(excecao, host);
+
+      // O mesmo id em qualquer origem de falha: e ele que liga a resposta que o
+      // cliente ve a linha de log que a explica (D-08).
+      expect(capturado.corpo.requestId).toBe('9f1c2e44-7b3a-4d18-9c2f-1a5e8b0d3c77');
     }
   });
 

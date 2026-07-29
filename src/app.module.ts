@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
+import { RequestIdMiddleware } from './shared/http/request-id.middleware';
 
 @Module({
   imports: [
@@ -25,4 +26,10 @@ import { DomainExceptionFilter } from './shared/filters/domain-exception.filter'
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Em todas as rotas, nao so nas que falham: o id precisa existir antes de
+    // se saber se a requisicao vai dar erro.
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

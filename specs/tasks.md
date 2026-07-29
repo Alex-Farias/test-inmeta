@@ -238,9 +238,9 @@ rodam.
   - Aceite: "O sistema DEVE responder a toda falha com um formato de erro único e estável,
     qualquer que seja a origem da falha", com o mapeamento de D-08
   - Teste: `exception.filter.spec.ts` → "traduz cada DomainError para seu status HTTP"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `273a5fb`
 
-- [ ] **TASK-007** · P0 · `shared` · adiciona request id em toda resposta de erro
+- [x] **TASK-007** · P0 · `shared` · adiciona request id em toda resposta de erro
   - Requisitos: REQ-19.3
   - Depende de: TASK-006
   - Aceite: "O sistema DEVE incluir em toda resposta de erro um identificador da requisição"
