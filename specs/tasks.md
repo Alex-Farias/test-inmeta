@@ -171,7 +171,7 @@ rodam.
     `.gitignore` precisava existir antes do segundo, senão `docs/desafio.md` entraria no
     histórico e não sairia mais.
 
-- [ ] **TASK-001** · P1 · `infra` · inicializa projeto nest com typescript e eslint
+- [x] **TASK-001** · P1 · `infra` · inicializa projeto nest com typescript e eslint
   - Requisitos: REQ-00
   - Depende de: TASK-077
   - Aceite: `npm run build` compila e `npm run lint` passa em base limpa
