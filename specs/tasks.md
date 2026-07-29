@@ -230,9 +230,9 @@ rodam.
   - Depende de: TASK-001
   - Aceite: `DomainError` e as cinco subclasses de D-08 existem, cada uma expondo seu código
   - Teste: `domain-error.spec.ts` → "cada erro de domínio expõe seu código próprio"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `18e2519`
 
-- [ ] **TASK-006** · P0 · `shared` · adiciona exception filter global traduzindo erros de dominio
+- [x] **TASK-006** · P0 · `shared` · adiciona exception filter global traduzindo erros de dominio
   - Requisitos: REQ-19.1, REQ-19.2
   - Depende de: TASK-005
   - Aceite: "O sistema DEVE responder a toda falha com um formato de erro único e estável,
