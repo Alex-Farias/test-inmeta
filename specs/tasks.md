@@ -176,9 +176,9 @@ rodam.
   - Depende de: TASK-077
   - Aceite: `npm run build` compila e `npm run lint` passa em base limpa
   - Teste: verificação manual documentada no README
-  - Commit: `chore(infra)`
+  - Commit: `chore(infra)` · `af02634`
 
-- [ ] **TASK-063** · P0 · `infra` · proibe remocao fisica por regra de lint
+- [x] **TASK-063** · P0 · `infra` · proibe remocao fisica por regra de lint
   - Requisitos: REQ-14.1
   - Depende de: TASK-001
   - **Posição:** preventiva. Precisa existir **antes** da primeira linha de domínio — lint
