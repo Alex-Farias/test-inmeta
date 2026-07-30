@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 
 import { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { Employee } from './domain/employee.entity';
@@ -28,5 +39,11 @@ export class EmployeesController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateEmployeeDto): Promise<Employee> {
     return this.service.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  softDelete(@Param('id') id: string): Promise<void> {
+    return this.service.softDelete(id);
   }
 }

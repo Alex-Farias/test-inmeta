@@ -90,4 +90,19 @@ describe('EmployeesRepository (integration)', () => {
       expect([...idsVistos].sort()).toEqual(inseridos.map((e) => e.id).sort());
     });
   });
+
+  describe('softDelete', () => {
+    it('preserva a linha apos remocao', async () => {
+      const criado = await repository.create({ name: 'Carla', email: 'carla@example.com' });
+
+      await repository.softDelete(criado.id);
+
+      const linha = await dataSource
+        .getRepository(Employee)
+        .findOne({ where: { id: criado.id }, withDeleted: true });
+
+      expect(linha).not.toBeNull();
+      expect(linha?.deletedAt).not.toBeNull();
+    });
+  });
 });

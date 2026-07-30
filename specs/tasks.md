@@ -321,7 +321,7 @@ rodam.
     alteração"
   - Teste: `employees.service.spec.ts` → "responde não encontrado para colaborador removido" e
     "persiste alteração de colaborador ativo"
-  - Commit: `feat(employees)`
+  - Commit: `feat(employees)` · `3c46d5e`
   - **Decisão confirmada com o humano, não coberta por `design.md`**: `PATCH` também valida
     unicidade de e-mail entre ativos (REQ-01.3), excluindo o próprio colaborador da
     comparação — a invariante vale a qualquer momento, não só na criação. Coberta pelo teste
@@ -331,7 +331,7 @@ rodam.
   - Consolidada em **TASK-015**: mesma entidade, mesmo módulo, duas asserções combinadas, e
     mesma natureza de preocupação — leitura e escrita do cadastro de colaborador.
 
-- [ ] **TASK-017** · P0 · `employees` · adiciona soft delete de colaborador
+- [x] **TASK-017** · P0 · `employees` · adiciona soft delete de colaborador
   - Requisitos: REQ-12.1, REQ-12.6, REQ-14.1
   - Depende de: TASK-015
   - Aceite: "QUANDO um colaborador é removido, o sistema DEVE marcá-lo como removido sem

@@ -8,6 +8,7 @@ describe('EmployeesService', () => {
   let findActiveByEmail: jest.Mock;
   let findActiveById: jest.Mock;
   let save: jest.Mock;
+  let softDelete: jest.Mock;
   let service: EmployeesService;
 
   beforeEach(() => {
@@ -15,11 +16,13 @@ describe('EmployeesService', () => {
     findActiveByEmail = jest.fn();
     findActiveById = jest.fn();
     save = jest.fn();
+    softDelete = jest.fn();
     const repository = {
       create,
       findActiveByEmail,
       findActiveById,
       save,
+      softDelete,
     } as unknown as EmployeesRepository;
 
     service = new EmployeesService(repository);
@@ -79,5 +82,22 @@ describe('EmployeesService', () => {
     );
 
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it('remove colaborador ativo', async () => {
+    const existente = { id: 'ativo', name: 'Ana', email: 'ana@example.com' } as Employee;
+    findActiveById.mockResolvedValue(existente);
+
+    await service.softDelete('ativo');
+
+    expect(softDelete).toHaveBeenCalledWith('ativo');
+  });
+
+  it('responde nao encontrado ao remover colaborador ja removido ou inexistente', async () => {
+    findActiveById.mockResolvedValue(null);
+
+    await expect(service.softDelete('inexistente')).rejects.toThrow(EntityNotFoundError);
+
+    expect(softDelete).not.toHaveBeenCalled();
   });
 });

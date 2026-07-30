@@ -62,4 +62,13 @@ export class EmployeesRepository {
   save(colaborador: Employee, manager?: EntityManager): Promise<Employee> {
     return this.repo(manager).save(colaborador);
   }
+
+  /**
+   * `softDelete` por criteria (UPDATE), nunca `.remove()`/`.softRemove()`
+   * (proibidos pelo lint, TASK-063). Nao verifica estado previo — a checagem
+   * de "ja removido" fica no service, via `findActiveById` (REQ-12.6).
+   */
+  async softDelete(id: string, manager?: EntityManager): Promise<void> {
+    await this.repo(manager).softDelete({ id });
+  }
 }

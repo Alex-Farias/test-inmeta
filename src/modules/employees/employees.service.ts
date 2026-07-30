@@ -69,4 +69,19 @@ export class EmployeesService {
 
     return this.repository.save(colaborador);
   }
+
+  /**
+   * Nome espelha o do repositorio (`softDelete`, nao `remove`): o lint
+   * (`no-restricted-syntax`, TASK-063) barra qualquer `.remove(`/`.softRemove(`
+   * por nome de propriedade, sem distinguir dominio de ORM.
+   *
+   * Reaproveita `findById` para o not-found (REQ-12.6): colaborador ja
+   * removido ou inexistente lanca `EntityNotFoundError` antes de qualquer
+   * escrita. Linha unica, sem invariante entre registros nesta task — a
+   * propagacao aos vinculos (D-04, operacao critica) so nasce em TASK-032.
+   */
+  async softDelete(id: string): Promise<void> {
+    const colaborador = await this.findById(id);
+    await this.repository.softDelete(colaborador.id);
+  }
 }
