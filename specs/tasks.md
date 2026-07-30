@@ -403,14 +403,14 @@ rodam.
 
 ## Vínculo
 
-- [ ] **TASK-025** · P1 · `employee-documents` · adiciona entidade e migration do vinculo
+- [x] **TASK-025** · P1 · `employee-documents` · adiciona entidade e migration do vinculo
   - Requisitos: REQ-03.6
   - Depende de: TASK-012, TASK-020
   - Aceite: migration cria `employee_documents` com `uq_employee_document_active` parcial,
     `deletion_cause` e o `CHECK` que amarra causa a `deleted_at` (D-12)
   - Teste: `employee-documents.repository.integration.spec.ts` → "rejeita vínculo removido
     sem causa de remoção"
-  - Commit: `feat(employee-documents)`
+  - Commit: `feat(employee-documents)` · `9eb604f`
 
 - [ ] **TASK-026** · P1 · `employee-documents` · adiciona vinculacao em lote transacional
   - Requisitos: REQ-03.1, REQ-03.2
