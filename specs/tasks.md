@@ -256,7 +256,7 @@ rodam.
   - Teste: `exception.filter.spec.ts` → "responde 500 genérico sem expor stack"
   - Commit: `feat(shared)` · `1fc5724`
 
-- [ ] **TASK-009** · P0 · `shared` · configura validation pipe global com whitelist
+- [x] **TASK-009** · P0 · `shared` · configura validation pipe global com whitelist
   - Requisitos: REQ-19.6, REQ-19.7
   - Depende de: TASK-006
   - Aceite: "O sistema DEVE rejeitar campos não reconhecidos na entrada, em vez de

@@ -1,11 +1,12 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
 import { RequestIdMiddleware } from './shared/http/request-id.middleware';
+import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
 
 @Module({
   imports: [
@@ -24,6 +25,9 @@ import { RequestIdMiddleware } from './shared/http/request-id.middleware';
     // TestingModule e a suite E2E exercitam exatamente o filter que a aplicacao
     // usa, em vez de uma montagem paralela que pode divergir.
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
+    // Mesma razao do filter: via APP_PIPE, para que teste e producao usem a
+    // mesma configuracao de validacao.
+    { provide: APP_PIPE, useFactory: criarValidationPipe },
   ],
 })
 export class AppModule implements NestModule {
