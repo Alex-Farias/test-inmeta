@@ -412,13 +412,13 @@ rodam.
     sem causa de remoção"
   - Commit: `feat(employee-documents)` · `9eb604f`
 
-- [ ] **TASK-026** · P1 · `employee-documents` · adiciona vinculacao em lote transacional
+- [x] **TASK-026** · P1 · `employee-documents` · adiciona vinculacao em lote transacional
   - Requisitos: REQ-03.1, REQ-03.2
   - Depende de: TASK-025, TASK-010
   - Aceite: "QUANDO um colaborador ativo é vinculado a um ou mais tipos de documento ativos,
     o sistema DEVE criar um vínculo por tipo informado, todos no estado pendente"
   - Teste: `employee-documents.service.spec.ts` → "cria um vínculo por tipo informado"
-  - Commit: `feat(employee-documents)`
+  - Commit: `feat(employee-documents)` · `7198ceb`
 
 - [ ] **TASK-027** · P0 · `employee-documents` · cobre rollback da vinculacao em lote
   - Requisitos: REQ-03.2, REQ-15.2, REQ-15.3
