@@ -346,16 +346,18 @@ rodam.
     para uso por um novo cadastro"
   - Teste: `employees.repository.integration.spec.ts` → "aceita cadastro com e-mail de
     colaborador removido"
-  - Commit: `feat(employees)`
+  - Commit: `feat(employees)` · `c73ea3f`
   - Sem código de produção novo — a garantia já existia por construção desde TASK-012
     (índice parcial) e TASK-013 (`findActiveByEmail`/`create` só sobre ativos). Esta task
     prova o caminho de ponta a ponta pela camada de repositório.
 
-- [ ] **TASK-019** · P0 · `employees` · cobre exclusao de removidos na listagem
+- [x] **TASK-019** · P0 · `employees` · cobre exclusao de removidos na listagem
   - Requisitos: REQ-14.2
   - Depende de: TASK-017, TASK-014
   - Aceite: colaborador removido não aparece na listagem nem é contado no total
   - Teste: `employees.repository.integration.spec.ts` → "exclui removido da listagem e do total"
+  - Sem código de produção novo — `findAllActive` (TASK-014) já filtra pelo alias principal
+    via `@DeleteDateColumn`. Task de verificação, commit `test`.
   - Commit: `test(employees)`
 
 ---

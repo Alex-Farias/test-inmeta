@@ -89,6 +89,20 @@ describe('EmployeesRepository (integration)', () => {
       expect(idsVistos.size).toBe(5);
       expect([...idsVistos].sort()).toEqual(inseridos.map((e) => e.id).sort());
     });
+
+    it('exclui removido da listagem e do total', async () => {
+      const ativo = await repository.create({ name: 'Ativo', email: 'ativo@example.com' });
+      const removido = await repository.create({
+        name: 'Removido',
+        email: 'removido@example.com',
+      });
+      await repository.softDelete(removido.id);
+
+      const resultado = await repository.findAllActive({ page: 1, limit: 20 });
+
+      expect(resultado.total).toBe(1);
+      expect(resultado.items.map((item) => item.id)).toEqual([ativo.id]);
+    });
   });
 
   describe('softDelete', () => {
