@@ -4,6 +4,7 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
+import { EmployeesModule } from './modules/employees/employees.module';
 import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
 import { RequestIdMiddleware } from './shared/http/request-id.middleware';
 import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
@@ -19,6 +20,7 @@ import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
       validate: validateEnv,
     }),
     DatabaseModule,
+    EmployeesModule,
   ],
   providers: [
     // Via APP_FILTER e nao `app.useGlobalFilters` em main.ts: assim o

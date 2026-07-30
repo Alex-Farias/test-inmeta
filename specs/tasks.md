@@ -294,9 +294,9 @@ rodam.
   - Depende de: TASK-004
   - Aceite: migration cria `employees` com `uq_employees_email` parcial (§1.3 do design)
   - Teste: `employees.repository.integration.spec.ts` → "aplica o índice único parcial de e-mail"
-  - Commit: `feat(employees)`
+  - Commit: `feat(employees)` · `f665135`
 
-- [ ] **TASK-013** · P1 · `employees` · adiciona cadastro de colaborador
+- [x] **TASK-013** · P1 · `employees` · adiciona cadastro de colaborador
   - Requisitos: REQ-01.1, REQ-01.3
   - Depende de: TASK-012, TASK-009
   - Aceite: "QUANDO um colaborador é cadastrado com dados válidos, o sistema DEVE registrá-lo
