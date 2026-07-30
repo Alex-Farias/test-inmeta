@@ -369,9 +369,9 @@ rodam.
   - Depende de: TASK-004
   - Aceite: migration cria `document_types` com `uq_document_types_name` parcial
   - Teste: `document-types.repository.integration.spec.ts` → "aplica o índice único parcial de nome"
-  - Commit: `feat(document-types)`
+  - Commit: `feat(document-types)` · `fcbbd7c`
 
-- [ ] **TASK-021** · P1 · `document-types` · adiciona cadastro de tipo de documento
+- [x] **TASK-021** · P1 · `document-types` · adiciona cadastro de tipo de documento
   - Requisitos: REQ-02.1, REQ-02.3
   - Depende de: TASK-020, TASK-009
   - Aceite: cadastra e devolve identificação; nome já pertencente a tipo ativo é rejeitado
