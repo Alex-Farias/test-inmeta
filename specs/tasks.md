@@ -262,9 +262,9 @@ rodam.
   - Aceite: "O sistema DEVE rejeitar campos não reconhecidos na entrada, em vez de
     ignorá-los em silêncio" e indicar quais campos foram recusados
   - Teste: `validation.pipe.spec.ts` → "rejeita campo desconhecido nomeando o campo"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `ceaa147`
 
-- [ ] **TASK-010** · P0 · `shared` · adiciona transaction runner sobre o data source
+- [x] **TASK-010** · P0 · `shared` · adiciona transaction runner sobre o data source
   - Requisitos: REQ-15.1
   - Depende de: TASK-004
   - Aceite: `TransactionRunner.run` executa em `READ COMMITTED` e propaga o `EntityManager`
