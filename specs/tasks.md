@@ -254,7 +254,7 @@ rodam.
     de servidor e registrar internamente o rastreamento completo", sem stack, consulta ou
     nome de tabela na resposta
   - Teste: `exception.filter.spec.ts` → "responde 500 genérico sem expor stack"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `1fc5724`
 
 - [ ] **TASK-009** · P0 · `shared` · configura validation pipe global com whitelist
   - Requisitos: REQ-19.6, REQ-19.7
