@@ -358,13 +358,13 @@ rodam.
   - Teste: `employees.repository.integration.spec.ts` → "exclui removido da listagem e do total"
   - Sem código de produção novo — `findAllActive` (TASK-014) já filtra pelo alias principal
     via `@DeleteDateColumn`. Task de verificação, commit `test`.
-  - Commit: `test(employees)`
+  - Commit: `test(employees)` · `fee3f40`
 
 ---
 
 ## Tipos de documento
 
-- [ ] **TASK-020** · P1 · `document-types` · adiciona entidade e migration de tipos de documento
+- [x] **TASK-020** · P1 · `document-types` · adiciona entidade e migration de tipos de documento
   - Requisitos: REQ-02.2
   - Depende de: TASK-004
   - Aceite: migration cria `document_types` com `uq_document_types_name` parcial
