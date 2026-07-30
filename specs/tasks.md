@@ -311,9 +311,9 @@ rodam.
   - Aceite: lista apenas ativos, informa o total e ordena de forma determinística com
     desempate por `id`
   - Teste: `employees.repository.integration.spec.ts` → "pagina sem repetir nem omitir item"
-  - Commit: `feat(employees)`
+  - Commit: `feat(employees)` · `069b239`
 
-- [ ] **TASK-015** · P1 · `employees` · adiciona consulta e atualizacao de colaborador
+- [x] **TASK-015** · P1 · `employees` · adiciona consulta e atualizacao de colaborador
   - Requisitos: REQ-01.4, REQ-01.5
   - Depende de: TASK-013
   - Aceite: identificação inexistente ou removida responde não encontrado; "QUANDO os dados de
@@ -322,6 +322,10 @@ rodam.
   - Teste: `employees.service.spec.ts` → "responde não encontrado para colaborador removido" e
     "persiste alteração de colaborador ativo"
   - Commit: `feat(employees)`
+  - **Decisão confirmada com o humano, não coberta por `design.md`**: `PATCH` também valida
+    unicidade de e-mail entre ativos (REQ-01.3), excluindo o próprio colaborador da
+    comparação — a invariante vale a qualquer momento, não só na criação. Coberta pelo teste
+    "rejeita update com e-mail já usado por outro colaborador ativo".
 
 - [>] **TASK-016** · P1 · `employees` · adiciona atualizacao de colaborador
   - Consolidada em **TASK-015**: mesma entidade, mesmo módulo, duas asserções combinadas, e

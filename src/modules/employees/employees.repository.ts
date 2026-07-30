@@ -53,4 +53,13 @@ export class EmployeesRepository {
 
     return { items, total };
   }
+
+  /** `null` tanto para inexistente quanto para removido (D-08, REQ-01.4). */
+  findActiveById(id: string, manager?: EntityManager): Promise<Employee | null> {
+    return this.repo(manager).findOneBy({ id });
+  }
+
+  save(colaborador: Employee, manager?: EntityManager): Promise<Employee> {
+    return this.repo(manager).save(colaborador);
+  }
 }

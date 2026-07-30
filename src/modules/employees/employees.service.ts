@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-import { DuplicatedResourceError } from '../../shared/errors';
+import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
 import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { Employee } from './domain/employee.entity';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeesRepository } from './employees.repository';
 
 export interface ListaPaginadaDeColaboradores {
@@ -34,5 +35,38 @@ export class EmployeesService {
   async findAll(pagination: PaginationQueryDto): Promise<ListaPaginadaDeColaboradores> {
     const { items, total } = await this.repository.findAllActive(pagination);
     return { items, total, page: pagination.page, limit: pagination.limit };
+  }
+
+  async findById(id: string): Promise<Employee> {
+    const colaborador = await this.repository.findActiveById(id);
+    if (!colaborador) {
+      throw new EntityNotFoundError('Colaborador nao encontrado.');
+    }
+
+    return colaborador;
+  }
+
+  /**
+   * REQ-01.5 nao fala explicitamente de e-mail no update, mas a invariante de
+   * REQ-01.3 (unico entre ativos) vale a qualquer momento, nao so na criacao
+   * — decisao confirmada com o humano. Reaproveita `findActiveByEmail` da
+   * TASK-013, excluindo o proprio colaborador da comparacao.
+   */
+  async update(id: string, dto: UpdateEmployeeDto): Promise<Employee> {
+    const colaborador = await this.findById(id);
+
+    if (dto.email !== undefined && dto.email !== colaborador.email) {
+      const emUsoPorOutro = await this.repository.findActiveByEmail(dto.email);
+      if (emUsoPorOutro && emUsoPorOutro.id !== id) {
+        throw new DuplicatedResourceError('Ja existe um colaborador ativo com este e-mail.');
+      }
+      colaborador.email = dto.email;
+    }
+
+    if (dto.name !== undefined) {
+      colaborador.name = dto.name;
+    }
+
+    return this.repository.save(colaborador);
   }
 }
