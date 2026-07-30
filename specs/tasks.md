@@ -278,7 +278,7 @@ rodam.
   - Aceite: aplica padrão documentado, respeita o teto máximo de itens e rejeita valores
     inválidos com erro de validação (D-15)
   - Teste: `pagination.dto.spec.ts` → "aplica padrão, limita ao teto e rejeita valor inválido"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `8e05338`
   - **Números de padrão e teto não estavam fixados em D-15** (só o exemplo `limit=20` em
     §4). Confirmado com o humano: página padrão `1`, `limit` padrão `20`, teto `100`.
     Exceder o teto limita (`clamp`) o valor sem erro (REQ-11.4); valor não numérico, zero
@@ -289,7 +289,7 @@ rodam.
 
 ## Colaboradores
 
-- [ ] **TASK-012** · P1 · `employees` · adiciona entidade e migration de colaboradores
+- [x] **TASK-012** · P1 · `employees` · adiciona entidade e migration de colaboradores
   - Requisitos: REQ-01.2
   - Depende de: TASK-004
   - Aceite: migration cria `employees` com `uq_employees_email` parcial (§1.3 do design)
