@@ -270,15 +270,20 @@ rodam.
   - Aceite: `TransactionRunner.run` executa em `READ COMMITTED` e propaga o `EntityManager`
     ao callback, conforme D-05
   - Teste: `transaction-runner.integration.spec.ts` → "desfaz escritas quando o callback lança"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `05d2ee9`
 
-- [ ] **TASK-011** · P1 · `shared` · adiciona utilitario de paginacao
+- [x] **TASK-011** · P1 · `shared` · adiciona utilitario de paginacao
   - Requisitos: REQ-11.2, REQ-11.3, REQ-11.4, REQ-11.6
   - Depende de: TASK-009
   - Aceite: aplica padrão documentado, respeita o teto máximo de itens e rejeita valores
     inválidos com erro de validação (D-15)
   - Teste: `pagination.dto.spec.ts` → "aplica padrão, limita ao teto e rejeita valor inválido"
   - Commit: `feat(shared)`
+  - **Números de padrão e teto não estavam fixados em D-15** (só o exemplo `limit=20` em
+    §4). Confirmado com o humano: página padrão `1`, `limit` padrão `20`, teto `100`.
+    Exceder o teto limita (`clamp`) o valor sem erro (REQ-11.4); valor não numérico, zero
+    ou negativo é rejeitado pelo `ValidationPipe` global da TASK-009 (REQ-11.6) — a
+    distinção segue os verbos do próprio critério de aceite ("respeita" vs. "rejeita").
 
 ---
 
