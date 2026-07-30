@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
 
-import { DuplicatedResourceError } from '../../shared/errors';
+import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
+import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DocumentType } from './domain/document-type.entity';
 import { CreateDocumentTypeDto } from './dto/create-document-type.dto';
 import { DocumentTypesRepository } from './document-types.repository';
+
+export interface ListaPaginadaDeTiposDeDocumento {
+  items: DocumentType[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 @Injectable()
 export class DocumentTypesService {
@@ -21,5 +29,19 @@ export class DocumentTypesService {
     }
 
     return this.repository.create({ name: dto.name, description: dto.description });
+  }
+
+  async findAll(pagination: PaginationQueryDto): Promise<ListaPaginadaDeTiposDeDocumento> {
+    const { items, total } = await this.repository.findAllActive(pagination);
+    return { items, total, page: pagination.page, limit: pagination.limit };
+  }
+
+  async findById(id: string): Promise<DocumentType> {
+    const tipo = await this.repository.findActiveById(id);
+    if (!tipo) {
+      throw new EntityNotFoundError('Tipo de documento nao encontrado.');
+    }
+
+    return tipo;
   }
 }

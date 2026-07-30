@@ -2,11 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
+import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DocumentType } from './domain/document-type.entity';
 
 export interface DadosDeTipoDeDocumento {
   name: string;
   description?: string;
+}
+
+export interface PaginaDeTiposDeDocumento {
+  items: DocumentType[];
+  total: number;
 }
 
 @Injectable()
@@ -29,5 +35,27 @@ export class DocumentTypesRepository {
    */
   findActiveByName(name: string, manager?: EntityManager): Promise<DocumentType | null> {
     return this.repo(manager).findOneBy({ name });
+  }
+
+  /**
+   * Ordena por `createdAt` com desempate por `id` (D-15) — garante que
+   * paginacao nao repita nem omita item entre paginas.
+   */
+  async findAllActive(
+    pagination: PaginationQueryDto,
+    manager?: EntityManager,
+  ): Promise<PaginaDeTiposDeDocumento> {
+    const [items, total] = await this.repo(manager).findAndCount({
+      order: { createdAt: 'ASC', id: 'ASC' },
+      skip: (pagination.page - 1) * pagination.limit,
+      take: pagination.limit,
+    });
+
+    return { items, total };
+  }
+
+  /** `null` tanto para inexistente quanto para removido (D-08, REQ-02.5). */
+  findActiveById(id: string, manager?: EntityManager): Promise<DocumentType | null> {
+    return this.repo(manager).findOneBy({ id });
   }
 }

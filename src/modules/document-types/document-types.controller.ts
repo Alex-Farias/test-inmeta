@@ -1,8 +1,9 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 
+import { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DocumentType } from './domain/document-type.entity';
 import { CreateDocumentTypeDto } from './dto/create-document-type.dto';
-import { DocumentTypesService } from './document-types.service';
+import { DocumentTypesService, ListaPaginadaDeTiposDeDocumento } from './document-types.service';
 
 @Controller('document-types')
 export class DocumentTypesController {
@@ -11,5 +12,15 @@ export class DocumentTypesController {
   @Post()
   create(@Body() dto: CreateDocumentTypeDto): Promise<DocumentType> {
     return this.service.create(dto);
+  }
+
+  @Get()
+  findAll(@Query() pagination: PaginationQueryDto): Promise<ListaPaginadaDeTiposDeDocumento> {
+    return this.service.findAll(pagination);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string): Promise<DocumentType> {
+    return this.service.findById(id);
   }
 }

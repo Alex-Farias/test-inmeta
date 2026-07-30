@@ -377,9 +377,9 @@ rodam.
   - Aceite: cadastra e devolve identificação; nome já pertencente a tipo ativo é rejeitado
     com conflito
   - Teste: `document-types.service.spec.ts` → "rejeita nome já usado por tipo ativo"
-  - Commit: `feat(document-types)`
+  - Commit: `feat(document-types)` · `52fcc2b`
 
-- [ ] **TASK-022** · P1 · `document-types` · adiciona listagem paginada e consulta de tipo
+- [x] **TASK-022** · P1 · `document-types` · adiciona listagem paginada e consulta de tipo
   - Requisitos: REQ-02.4, REQ-02.5, REQ-11.1
   - Depende de: TASK-021, TASK-011
   - Aceite: lista apenas ativos, paginado, com total; identificação inexistente ou removida

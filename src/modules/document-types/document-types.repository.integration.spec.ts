@@ -3,10 +3,12 @@ import { DataSource } from 'typeorm';
 
 import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785446317559-CreateDocumentTypes';
 import { DocumentType } from './domain/document-type.entity';
+import { DocumentTypesRepository } from './document-types.repository';
 
 describe('DocumentTypesRepository (integration)', () => {
   let container: StartedPostgreSqlContainer;
   let dataSource: DataSource;
+  let repository: DocumentTypesRepository;
 
   beforeAll(async () => {
     container = await new PostgreSqlContainer('postgres:18-alpine').start();
@@ -24,6 +26,7 @@ describe('DocumentTypesRepository (integration)', () => {
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
+    repository = new DocumentTypesRepository(dataSource);
   }, 120_000);
 
   afterAll(async () => {
@@ -51,6 +54,42 @@ describe('DocumentTypesRepository (integration)', () => {
       await repo.softDelete(removido.id);
 
       await expect(repo.save(repo.create({ name: 'ASO' }))).resolves.toBeDefined();
+    });
+  });
+
+  describe('findAllActive', () => {
+    it('pagina sem repetir nem omitir item', async () => {
+      const repo = dataSource.getRepository(DocumentType);
+      const inseridos = await Promise.all(
+        Array.from({ length: 5 }, (_, indice) =>
+          repo.save(repo.create({ name: `Tipo ${indice}` })),
+        ),
+      );
+
+      const limit = 2;
+      const idsVistos = new Set<string>();
+      let total = 0;
+
+      for (let page = 1; page <= 3; page += 1) {
+        const resultado = await repository.findAllActive({ page, limit });
+        resultado.items.forEach((item) => idsVistos.add(item.id));
+        total = resultado.total;
+      }
+
+      expect(total).toBe(5);
+      expect(idsVistos.size).toBe(5);
+      expect([...idsVistos].sort()).toEqual(inseridos.map((t) => t.id).sort());
+    });
+
+    it('exclui removido da listagem e do total', async () => {
+      const ativo = await repository.create({ name: 'Ativo' });
+      const removido = await repository.create({ name: 'Removido' });
+      await dataSource.getRepository(DocumentType).softDelete(removido.id);
+
+      const resultado = await repository.findAllActive({ page: 1, limit: 20 });
+
+      expect(resultado.total).toBe(1);
+      expect(resultado.items.map((item) => item.id)).toEqual([ativo.id]);
     });
   });
 });
