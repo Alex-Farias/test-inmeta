@@ -303,9 +303,9 @@ rodam.
     e devolver sua identificação"; e-mail já pertencente a colaborador ativo é rejeitado com
     conflito
   - Teste: `employees.service.spec.ts` → "rejeita e-mail já usado por colaborador ativo"
-  - Commit: `feat(employees)`
+  - Commit: `feat(employees)` · `8f37a40`
 
-- [ ] **TASK-014** · P1 · `employees` · adiciona listagem paginada de colaboradores
+- [x] **TASK-014** · P1 · `employees` · adiciona listagem paginada de colaboradores
   - Requisitos: REQ-01.6, REQ-11.1, REQ-11.5, REQ-11.7
   - Depende de: TASK-013, TASK-011
   - Aceite: lista apenas ativos, informa o total e ordena de forma determinística com

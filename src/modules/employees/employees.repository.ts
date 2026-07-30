@@ -2,11 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
+import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { Employee } from './domain/employee.entity';
 
 export interface DadosDeColaborador {
   name: string;
   email: string;
+}
+
+export interface PaginaDeColaboradores {
+  items: Employee[];
+  total: number;
 }
 
 @Injectable()
@@ -29,5 +35,22 @@ export class EmployeesRepository {
    */
   findActiveByEmail(email: string, manager?: EntityManager): Promise<Employee | null> {
     return this.repo(manager).findOneBy({ email });
+  }
+
+  /**
+   * Ordena por `createdAt` com desempate por `id` (D-15) — garante que
+   * paginacao nao repita nem omita item entre paginas.
+   */
+  async findAllActive(
+    pagination: PaginationQueryDto,
+    manager?: EntityManager,
+  ): Promise<PaginaDeColaboradores> {
+    const [items, total] = await this.repo(manager).findAndCount({
+      order: { createdAt: 'ASC', id: 'ASC' },
+      skip: (pagination.page - 1) * pagination.limit,
+      take: pagination.limit,
+    });
+
+    return { items, total };
   }
 }
