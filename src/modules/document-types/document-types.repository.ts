@@ -58,4 +58,13 @@ export class DocumentTypesRepository {
   findActiveById(id: string, manager?: EntityManager): Promise<DocumentType | null> {
     return this.repo(manager).findOneBy({ id });
   }
+
+  /**
+   * `softDelete` por criteria (UPDATE), nunca `.remove()`/`.softRemove()`
+   * (proibidos pelo lint, TASK-063). Nao verifica estado previo — a checagem
+   * de "ja removido" fica no service, via `findActiveById` (REQ-13.1).
+   */
+  async softDelete(id: string, manager?: EntityManager): Promise<void> {
+    await this.repo(manager).softDelete({ id });
+  }
 }

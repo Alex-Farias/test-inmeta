@@ -92,4 +92,28 @@ describe('DocumentTypesRepository (integration)', () => {
       expect(resultado.items.map((item) => item.id)).toEqual([ativo.id]);
     });
   });
+
+  describe('softDelete', () => {
+    it('preserva a linha apos remocao', async () => {
+      const criado = await repository.create({ name: 'Cracha' });
+
+      await repository.softDelete(criado.id);
+
+      const linha = await dataSource
+        .getRepository(DocumentType)
+        .findOne({ where: { id: criado.id }, withDeleted: true });
+
+      expect(linha).not.toBeNull();
+      expect(linha?.deletedAt).not.toBeNull();
+    });
+
+    it('libera o nome apos remocao', async () => {
+      const removido = await repository.create({ name: 'Certidao' });
+      await repository.softDelete(removido.id);
+
+      const novo = await repository.create({ name: 'Certidao' });
+
+      expect(novo.id).not.toBe(removido.id);
+    });
+  });
 });

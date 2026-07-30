@@ -386,13 +386,13 @@ rodam.
     responde não encontrado
   - Teste: `document-types.repository.integration.spec.ts` → "exclui removido da listagem" e
     `document-types.service.spec.ts` → "responde não encontrado para tipo removido"
-  - Commit: `feat(document-types)`
+  - Commit: `feat(document-types)` · `e16b024`
 
 - [>] **TASK-023** · P1 · `document-types` · adiciona consulta de tipo por id
   - Consolidada em **TASK-022**: mesmo catálogo, mesmo módulo, três asserções combinadas, e
     mesma natureza de preocupação — leitura do catálogo de tipos.
 
-- [ ] **TASK-024** · P0 · `document-types` · adiciona soft delete de tipo de documento
+- [x] **TASK-024** · P0 · `document-types` · adiciona soft delete de tipo de documento
   - Requisitos: REQ-13.1, REQ-13.6, REQ-14.7
   - Depende de: TASK-022
   - Aceite: marca como removido sem apagar fisicamente e libera o nome para novo cadastro

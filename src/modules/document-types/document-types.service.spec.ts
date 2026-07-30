@@ -7,16 +7,19 @@ describe('DocumentTypesService', () => {
   let create: jest.Mock;
   let findActiveByName: jest.Mock;
   let findActiveById: jest.Mock;
+  let softDelete: jest.Mock;
   let service: DocumentTypesService;
 
   beforeEach(() => {
     create = jest.fn();
     findActiveByName = jest.fn();
     findActiveById = jest.fn();
+    softDelete = jest.fn();
     const repository = {
       create,
       findActiveByName,
       findActiveById,
+      softDelete,
     } as unknown as DocumentTypesRepository;
 
     service = new DocumentTypesService(repository);
@@ -45,5 +48,22 @@ describe('DocumentTypesService', () => {
     findActiveById.mockResolvedValue(null);
 
     await expect(service.findById('inexistente')).rejects.toThrow(EntityNotFoundError);
+  });
+
+  it('remove tipo ativo', async () => {
+    const existente = { id: 'ativo', name: 'CPF', description: null } as DocumentType;
+    findActiveById.mockResolvedValue(existente);
+
+    await service.softDelete('ativo');
+
+    expect(softDelete).toHaveBeenCalledWith('ativo');
+  });
+
+  it('responde nao encontrado ao remover tipo ja removido ou inexistente', async () => {
+    findActiveById.mockResolvedValue(null);
+
+    await expect(service.softDelete('inexistente')).rejects.toThrow(EntityNotFoundError);
+
+    expect(softDelete).not.toHaveBeenCalled();
   });
 });

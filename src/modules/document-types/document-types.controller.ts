@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 
 import { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DocumentType } from './domain/document-type.entity';
@@ -22,5 +32,11 @@ export class DocumentTypesController {
   @Get(':id')
   findOne(@Param('id') id: string): Promise<DocumentType> {
     return this.service.findById(id);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  softDelete(@Param('id') id: string): Promise<void> {
+    return this.service.softDelete(id);
   }
 }

@@ -44,4 +44,19 @@ export class DocumentTypesService {
 
     return tipo;
   }
+
+  /**
+   * Nome espelha o do repositorio (`softDelete`, nao `remove`): o lint
+   * (`no-restricted-syntax`, TASK-063) barra qualquer `.remove(`/`.softRemove(`
+   * por nome de propriedade, sem distinguir dominio de ORM.
+   *
+   * Reaproveita `findById` para o not-found (REQ-13.1): tipo ja removido ou
+   * inexistente lanca `EntityNotFoundError` antes de qualquer escrita. Sem
+   * propagacao aos vinculos aqui — `employee_documents` ainda nao existe
+   * neste lote; a cascata e TASK-033/034.
+   */
+  async softDelete(id: string): Promise<void> {
+    const tipo = await this.findById(id);
+    await this.repository.softDelete(tipo.id);
+  }
 }
