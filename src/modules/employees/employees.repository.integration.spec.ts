@@ -104,5 +104,14 @@ describe('EmployeesRepository (integration)', () => {
       expect(linha).not.toBeNull();
       expect(linha?.deletedAt).not.toBeNull();
     });
+
+    it('aceita cadastro com e-mail de colaborador removido', async () => {
+      const removido = await repository.create({ name: 'Diego', email: 'diego@example.com' });
+      await repository.softDelete(removido.id);
+
+      const novo = await repository.create({ name: 'Diego Novo', email: 'diego@example.com' });
+
+      expect(novo.id).not.toBe(removido.id);
+    });
   });
 });

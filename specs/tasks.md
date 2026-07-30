@@ -337,9 +337,9 @@ rodam.
   - Aceite: "QUANDO um colaborador é removido, o sistema DEVE marcá-lo como removido sem
     apagá-lo fisicamente"; remoção de já removido responde não encontrado
   - Teste: `employees.repository.integration.spec.ts` → "preserva a linha após remoção"
-  - Commit: `feat(employees)`
+  - Commit: `feat(employees)` · `8099d09`
 
-- [ ] **TASK-018** · P0 · `employees` · libera email para novo cadastro apos remocao
+- [x] **TASK-018** · P0 · `employees` · libera email para novo cadastro apos remocao
   - Requisitos: REQ-12.5, REQ-14.7
   - Depende de: TASK-017
   - Aceite: "QUANDO um colaborador é removido, o sistema DEVE liberar seu endereço de e-mail
@@ -347,6 +347,9 @@ rodam.
   - Teste: `employees.repository.integration.spec.ts` → "aceita cadastro com e-mail de
     colaborador removido"
   - Commit: `feat(employees)`
+  - Sem código de produção novo — a garantia já existia por construção desde TASK-012
+    (índice parcial) e TASK-013 (`findActiveByEmail`/`create` só sobre ativos). Esta task
+    prova o caminho de ponta a ponta pela camada de repositório.
 
 - [ ] **TASK-019** · P0 · `employees` · cobre exclusao de removidos na listagem
   - Requisitos: REQ-14.2
