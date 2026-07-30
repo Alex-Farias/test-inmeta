@@ -420,14 +420,16 @@ rodam.
   - Teste: `employee-documents.service.spec.ts` → "cria um vínculo por tipo informado"
   - Commit: `feat(employee-documents)` · `7198ceb`
 
-- [ ] **TASK-027** · P0 · `employee-documents` · cobre rollback da vinculacao em lote
+- [x] **TASK-027** · P0 · `employee-documents` · cobre rollback da vinculacao em lote
   - Requisitos: REQ-03.2, REQ-15.2, REQ-15.3
   - Depende de: TASK-026
   - Aceite: "QUANDO uma vinculação em lote é solicitada, o sistema DEVE criar todos os
     vínculos solicitados ou nenhum deles"
   - Teste: `employee-documents.integration.spec.ts` → "falha no meio do lote não deixa
     vínculo parcial"
-  - Commit: `test(employee-documents)`
+  - Sem código de produção novo — `TransactionRunner` (TASK-026) já garante atomicidade por
+    construção. Task de verificação.
+  - Commit: `test(employee-documents)` · `ef66227`
 
 - [ ] **TASK-028** · P1 · `employee-documents` · rejeita lote invalido ou com vinculo duplicado
   - Requisitos: REQ-03.3, REQ-03.4, REQ-03.5
