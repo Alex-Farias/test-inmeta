@@ -635,13 +635,28 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     e antes da inserção disputada. Ver `design.md` §5 e
     `test/helpers/concurrent-transactions.ts`.
 
-- [ ] **TASK-040** · P0 · `submissions` · adiciona reenvio com incremento de versao
+- [x] **TASK-040** · P0 · `submissions` · adiciona reenvio com incremento de versao
   - Requisitos: REQ-07.1, REQ-07.2, REQ-07.4
   - Depende de: TASK-039
   - Aceite: "QUANDO um documento é reenviado para um vínculo que já possui envio ativo, o
-    sistema DEVE desativar o envio anterior e registrar o novo com a versão incrementada em 1"
-  - Teste: `submissions.service.spec.ts` → "desativa anterior e incrementa versão"
-  - Commit: `feat(submissions)`
+    sistema DEVE desativar o envio anterior e registrar o novo com a versão incrementada em 1".
+    O cálculo de versão usa `MAX(version)` sobre **todas** as submissions do vínculo, não
+    apenas a ativa — pré-requisito para TASK-047: depois de uma remoção não há ativa, mas o
+    histórico permanece, e reaproveitar o número quebraria REQ-08.4
+  - Teste: `submissions.service.spec.ts` → "desativa anterior e incrementa versão", que assere
+    a identidade do `manager` nas três chamadas e a ordem desativar-antes-de-inserir;
+    `submissions.integration.spec.ts` → "desativa o envio anterior e registra o próximo como
+    ativo", "mantém a sequência de versões contígua ao longo de vários reenvios" e "desfaz a
+    desativação do anterior se a inserção falhar" — o último é o que prova o que a transação
+    de fato compra, e o único que falharia sem ela
+  - Commit: `feat(submissions)` · `dfe12d2`
+  - **`TransactionRunner` entra aqui pela primeira vez no caminho de envio.** `enviar` segue
+    um método só para envio e reenvio (rota única, D-16): o primeiro envio é o caso degenerado,
+    porque `deactivateActive` afeta zero linhas quando não há ativa. Sem branch, e sem TOCTOU
+    entre consultar e escrever.
+  - **Quebrou o teste da TASK-039 e expôs um defeito nele.** Com a desativação, dois envios
+    "simultâneos" sem sobreposição real passam a ser envio + reenvio legítimos, e o teste
+    antigo — que dependia de `Promise.all` — falhou. A correção veio antes, em `dcca316`.
 
 - [ ] **TASK-041** · P0 · `submissions` · traduz violacao de unicidade discriminando a constraint
   - Requisitos: REQ-07.5, REQ-19.2
