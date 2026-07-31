@@ -820,7 +820,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     404. A distinção entre inexistente e removido é da TASK-045, que introduz `findAnyById`.
     Sem a ressalva, o commit isolado se lê como se REQ-09 estivesse inteiro aqui.
 
-- [ ] **TASK-045** · P0 · `submissions` · mantem historico acessivel apos remocao
+- [x] **TASK-045** · P0 · `submissions` · mantem historico acessivel apos remocao
   - Requisitos: REQ-09.4, REQ-09.5, REQ-14.6
   - Depende de: TASK-044, TASK-032
   - Aceite, os três casos que `findAnyById` distingue:
@@ -830,7 +830,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Teste: `submissions.integration.spec.ts` → "histórico segue acessível após remoção do
     colaborador", "histórico segue acessível após remoção do vínculo" e "responde não
     encontrado para vínculo que nunca existiu"
-  - Commit: `feat(submissions)`
+  - Commit: `feat(submissions)` · `392153a`
   - **Aceite ampliado.** A redação original cobria só o caso que motivou a task — histórico
     após remoção. Os três casos saem do mesmo método e o terceiro é o que justifica
     `findAnyById` existir: sem ele bastaria consultar as submissions direto, e um uuid
