@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type DeletionCause = 'MANUAL' | 'TYPE_REMOVED';
+export type DeletionCause = 'MANUAL' | 'TYPE_REMOVED' | 'EMPLOYEE_REMOVED';
 
 /**
  * Colunas nomeadas explicitamente em snake_case (`name: '...'`): nao ha

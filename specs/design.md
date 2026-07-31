@@ -38,7 +38,7 @@ erDiagram
         uuid id PK
         uuid employee_id FK
         uuid document_type_id FK
-        varchar deletion_cause "MANUAL | TYPE_REMOVED"
+        varchar deletion_cause "MANUAL | TYPE_REMOVED | EMPLOYEE_REMOVED"
         timestamptz deleted_at
     }
     DOCUMENT_SUBMISSIONS {
@@ -116,7 +116,7 @@ Atende REQ-02.3 e REQ-13.6.
 |---|---|---|
 | `employee_id` | `uuid NOT NULL` → `employees(id)` | |
 | `document_type_id` | `uuid NOT NULL` → `document_types(id)` | |
-| `deletion_cause` | `varchar(20) NULL` | `MANUAL` \| `TYPE_REMOVED`. Nulo enquanto ativo |
+| `deletion_cause` | `varchar(20) NULL` | `MANUAL` \| `TYPE_REMOVED` \| `EMPLOYEE_REMOVED`. Nulo enquanto ativo |
 
 **Não existe coluna `status`.** Pendência é derivada — ver **D-03**.
 
@@ -667,11 +667,22 @@ morar no banco.
 
 ### D-12 — `deletion_cause` distingue desvínculo de cascata
 
-**Contexto.** REQ-13.2 propaga remoção do tipo aos vínculos. REQ-04 remove um vínculo por
-decisão manual. Depois da propagação, as duas remoções ficam indistinguíveis.
+**Contexto.** REQ-12.2 e REQ-13.2 propagam remoção aos vínculos — a primeira a partir do
+colaborador, a segunda a partir do tipo. REQ-04 remove um vínculo por decisão manual. Depois
+da propagação, as três remoções ficam indistinguíveis.
 
-**Decisão.** `employee_documents.deletion_cause` (`MANUAL` | `TYPE_REMOVED`), gravada na mesma
-transação que marca `deleted_at`, com `CHECK` amarrando as duas colunas (§1.3).
+**Decisão.** `employee_documents.deletion_cause` (`MANUAL` | `TYPE_REMOVED` |
+`EMPLOYEE_REMOVED`), gravada na mesma transação que marca `deleted_at`, com `CHECK` amarrando
+as duas colunas (§1.3).
+
+**Terceiro valor, acrescentado na TASK-031.** A versão original desta decisão previa apenas
+`MANUAL` e `TYPE_REMOVED`, e a cascata de remoção de colaborador não tinha valor próprio.
+Reaproveitar `MANUAL` ali apagaria a distinção entre "este vínculo específico deixou de ser
+exigido" e "o colaborador saiu da empresa" — que é exatamente o que a decisão existe para
+preservar. `EMPLOYEE_REMOVED` é simétrico a `TYPE_REMOVED`: um valor por gatilho de cascata.
+Não exigiu migration, porque a coluna é `varchar(20)` sem `CHECK` de enum — a restrição de
+valores vive na união de tipos do TypeScript, e o `CHECK` do banco cuida apenas do que
+importa para a integridade, que é a amarração com `deleted_at`.
 
 **Alternativa descartada.** Não registrar a causa. Mais simples e destrói informação de forma
 irreversível: uma eventual restauração do tipo teria de escolher entre ressuscitar

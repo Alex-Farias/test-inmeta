@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 
 import { DeletionCause, EmployeeDocument } from './domain/employee-document.entity';
 
@@ -56,5 +56,26 @@ export class EmployeeDocumentsRepository {
    */
   async softDelete(id: string, cause: DeletionCause, manager?: EntityManager): Promise<void> {
     await this.repo(manager).update({ id }, { deletedAt: new Date(), deletionCause: cause });
+  }
+
+  /**
+   * `deletedAt: IsNull()` explicito no criterio: `update()` nao recebe o filtro
+   * automatico do `@DeleteDateColumn` (D-06 — ele cobre leitura pelo alias
+   * principal, nao escrita). Sem ele, um vinculo ja desvinculado como
+   * `'MANUAL'` teria `deleted_at` e `deletion_cause` reescritos pela cascata,
+   * destruindo justamente a distincao que D-12 existe para preservar.
+   *
+   * Um unico `UPDATE` para N linhas: agregacao em SQL, sem carregar a colecao
+   * para iterar no Node.
+   */
+  async softDeleteAllByEmployeeId(
+    employeeId: string,
+    cause: DeletionCause,
+    manager?: EntityManager,
+  ): Promise<void> {
+    await this.repo(manager).update(
+      { employeeId, deletedAt: IsNull() },
+      { deletedAt: new Date(), deletionCause: cause },
+    );
   }
 }

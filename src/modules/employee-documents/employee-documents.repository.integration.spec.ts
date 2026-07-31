@@ -85,4 +85,59 @@ describe('EmployeeDocumentsRepository (integration)', () => {
       expect(linha?.deletionCause).toBe('MANUAL');
     });
   });
+
+  describe('softDeleteAllByEmployeeId', () => {
+    it('remove todos os vínculos ativos do colaborador', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const bruno = await employees.save(
+        employees.create({ name: 'Bruno', email: 'bruno@example.com' }),
+      );
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+      const rg = await documentTypes.save(documentTypes.create({ name: 'RG' }));
+
+      const [anaCpf, anaRg] = await repository.createMany(ana.id, [cpf.id, rg.id]);
+      const [brunoCpf] = await repository.createMany(bruno.id, [cpf.id]);
+
+      await repository.softDeleteAllByEmployeeId(ana.id, 'EMPLOYEE_REMOVED');
+
+      const linhas = await dataSource
+        .getRepository(EmployeeDocument)
+        .find({ withDeleted: true, order: { createdAt: 'ASC' } });
+      const porId = new Map(linhas.map((linha) => [linha.id, linha]));
+
+      for (const id of [anaCpf.id, anaRg.id]) {
+        expect(porId.get(id)?.deletedAt).not.toBeNull();
+        expect(porId.get(id)?.deletionCause).toBe('EMPLOYEE_REMOVED');
+      }
+
+      // Isolamento: o criterio filtra por colaborador, nao remove a tabela toda.
+      expect(porId.get(brunoCpf.id)?.deletedAt).toBeNull();
+      expect(porId.get(brunoCpf.id)?.deletionCause).toBeNull();
+    });
+
+    it('preserva a causa de vínculo já desvinculado manualmente', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+      const rg = await documentTypes.save(documentTypes.create({ name: 'RG' }));
+
+      const [anaCpf, anaRg] = await repository.createMany(ana.id, [cpf.id, rg.id]);
+      await repository.softDelete(anaCpf.id, 'MANUAL');
+
+      await repository.softDeleteAllByEmployeeId(ana.id, 'EMPLOYEE_REMOVED');
+
+      const linhas = await dataSource.getRepository(EmployeeDocument).find({ withDeleted: true });
+      const porId = new Map(linhas.map((linha) => [linha.id, linha]));
+
+      // `deletedAt: IsNull()` no criterio: a cascata nao reescreve o que ja
+      // estava removido, senao a distincao de D-12 se perderia.
+      expect(porId.get(anaCpf.id)?.deletionCause).toBe('MANUAL');
+      expect(porId.get(anaRg.id)?.deletionCause).toBe('EMPLOYEE_REMOVED');
+    });
+  });
 });

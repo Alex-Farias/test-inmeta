@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { EntityManager } from 'typeorm';
 
 import { DocumentTypesService } from '../document-types/document-types.service';
 import { EmployeesService } from '../employees/employees.service';
@@ -58,5 +59,20 @@ export class EmployeeDocumentsService {
     }
 
     await this.repository.softDelete(vinculo.id, 'MANUAL');
+  }
+
+  /**
+   * Ponto de entrada publico da propagacao de REQ-12.2: quem remove o
+   * colaborador e `employees`, mas quem escreve em `employee_documents` e este
+   * modulo (D-10). O `manager` chega de fora porque a remocao do colaborador e
+   * a dos vinculos precisam ser atomicas (D-04.3, D-05) — a transacao e aberta
+   * pelo chamador, nao aqui.
+   *
+   * Causa `'EMPLOYEE_REMOVED'`, simetrica a `'TYPE_REMOVED'` da cascata de
+   * tipo: D-12 distingue cada gatilho de remocao para manter a restauracao
+   * seletiva possivel.
+   */
+  async removerVinculosDoColaborador(employeeId: string, manager?: EntityManager): Promise<void> {
+    await this.repository.softDeleteAllByEmployeeId(employeeId, 'EMPLOYEE_REMOVED', manager);
   }
 }
