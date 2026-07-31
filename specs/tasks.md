@@ -886,13 +886,33 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     com a distro WSL, `Could not find a working container runtime strategy`. Nenhum commit foi
     feito até ela rodar de fato.
 
-- [ ] **TASK-047** · P0 · `submissions` · nao reaproveita numero de versao apos remocao
+- [x] **TASK-047** · P0 · `submissions` · nao reaproveita numero de versao apos remocao
   - Requisitos: REQ-08.4
   - Depende de: TASK-046
   - Aceite: "QUANDO um novo envio ocorre após a remoção do envio ativo, o sistema DEVE
     continuar a contagem de versões a partir da maior versão já usada no vínculo"
-  - Teste: `submissions.repository.integration.spec.ts` → "não reemite número de versão já usado"
-  - Commit: `test(submissions)`
+  - Teste: `submissions.repository.integration.spec.ts` → "não reemite número de versão já
+    usado"; `submissions.integration.spec.ts` → "continua a contagem de versões após a remoção
+    do envio ativo", mais "mantém o vínculo pendente enquanto não há novo envio" e "responde
+    não encontrado ao remover envio já removido"
+  - Commit: `test(submissions)` · `1eb5a52`
+  - **Terceiro teste do projeto sobre número de versão, e os três provam coisas distintas.**
+    O de `describe('migration')` (TASK-037) prova o **índice**: `uq_submission_version` não é
+    parcial, então a versão removida segue ocupando o slot. O de `findNextVersion` prova o
+    **cálculo** isolado. Os dois são contrapositivos — mostram que a colisão *aconteceria*.
+    Este prova o **ciclo**: remoção de produção, recálculo e inserção seguinte entrando de
+    fato. É o único que passa por `softDeleteActive` em vez de `softDelete` cru.
+  - **Dois níveis, de propósito.** O do repositório monta o ciclo chamando os métodos direto;
+    o do service vai por `enviar` e `removerEnvioAtivo`, que é como a sequência acontece na
+    rota. O segundo é o que enxerga a ordem interna de `enviar` — desativar, recalcular,
+    inserir — e a leitura literal de REQ-08.4 ("QUANDO um novo envio ocorre após a remoção").
+  - **Levou junto o estado que D-13 declara válido**: vínculo pendente **com** histórico, sem
+    envio ativo e sem versão anterior reativada. Ele não tinha teste explícito e é o que a
+    listagem de pendentes vai encontrar na TASK-048.
+  - **Falsificado antes de commitar.** Comentado o `.withDeleted()` de `findNextVersion`, os
+    dois testes novos falham com `Expected: 2, Received: 1` — junto do de TASK-037, que já
+    cobria o cálculo. É a proteção que o comentário do método pede e não podia cobrar sozinho.
+  - Nenhuma linha de produção no commit, como o tipo `test` promete.
 
 ---
 
