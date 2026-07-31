@@ -191,9 +191,22 @@ WHERE ed.deleted_at IS NULL
   );
 ```
 
-O anti-join é servido por `uq_submission_active`: o predicado do índice parcial é exatamente
-o predicado da subconsulta, e `employee_document_id` é sua coluna líder. **Nenhum índice
-adicional é necessário** — a ser confirmado com `EXPLAIN` na task de listagem de pendentes.
+**Confirmado com `EXPLAIN (ANALYZE, BUFFERS)` (TASK-070), e o resultado corrige a previsão
+acima.** Sobre um volume representativo (5.000 vínculos, 4.000 com envio ativo — 80% de
+conformidade), o plano real é `Hash Anti Join` com `Seq Scan` em `document_submissions`,
+executando em 3ms; `uq_submission_active` **não** aparece no plano. `uq_submission_active`
+existe para a constraint de unicidade de D-02, não para acelerar este anti-join — e não
+precisa acelerar: o conjunto de submissions ativas (4.000 linhas, ~220kB de hash) cabe
+folgado em `work_mem` (padrão 4MB), e ler essa tabela inteira uma vez e montar um hash é mais
+barato para o otimizador do que 5.000 buscas individuais no índice via `Nested Loop`. **Nenhum
+índice adicional é necessário** continua verdadeiro, mas por um motivo diferente do previsto:
+não porque o existente sirva o anti-join, e sim porque nenhum índice mudaria essa conta
+enquanto o conjunto ativo couber em memória.
+
+Nota de escala: se o volume de produção divergir o bastante para o conjunto de submissions
+ativas não caber mais em `work_mem`, o otimizador pode migrar sozinho para outro plano — isso
+se decide com dado real de produção (e, se necessário, ajuste de `work_mem` ou índice
+dedicado), não com teste antecipado sobre escala hipotética.
 
 Os três `deleted_at IS NULL` repetidos nos JOINs não são redundância: são o requisito
 REQ-14.3 e REQ-14.4 escritos à mão, porque o ORM não os aplica a join manual. Ver **D-06**.
@@ -342,7 +355,13 @@ antes provaria a coerência de `status` é substituído por um que prova a coer�
 listagem derivada após envio, reenvio, remoção de envio e soft delete.
 
 Custo assumido: um anti-join por consulta de pendência, em vez de um predicado sobre coluna.
-Verificado em §1.4 que `uq_submission_active` já o serve, **sem índice adicional**.
+Confirmado em §1.4 (TASK-070, `EXPLAIN` real) que o custo é baixo (3ms no volume avaliado) e
+que nenhum índice adicional muda essa conta — não porque `uq_submission_active` sirva o
+anti-join (o plano real não o usa), mas porque o conjunto de submissions ativas cabe em
+`work_mem` e o otimizador prefere `Hash Anti Join` a buscas por índice. TASK-070 fecha como
+confirmação de que reverter esta decisão não introduziu custo que justificasse manter o
+`status` denormalizado — é verificação da premissa, não pendência técnica em aberto; nenhuma
+task de índice decorre daqui.
 
 Nota de escala para o README: em volume de produção a denormalização volta a fazer sentido,
 alimentada por evento ou por view materializada — não por escrita espalhada em cinco
