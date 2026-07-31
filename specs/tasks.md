@@ -991,13 +991,23 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - **Nome declarado cobre só o colaborador (REQ-14.3).** Adicionado "exclui pendente de tipo
     removido" para REQ-14.4, espelho simétrico — mesmo padrão de expansão da TASK-031/033.
 
-- [ ] **TASK-070** · P1 · `db` · valida plano de consulta dos pendentes com explain
+- [x] **TASK-070** · P1 · `db` · valida plano de consulta dos pendentes com explain
   - Requisitos: REQ-10.1
   - Depende de: TASK-048
   - Aceite: `EXPLAIN` confirma que o anti-join usa `uq_submission_active`, conforme afirmado
     em D-03; se não usar, abrir task de índice dedicado
   - Teste: verificação documentada no README
-  - Commit: `chore(db)`
+  - Commit: `chore(db)` · `aeff81b`
+  - **A previsão de D-03/§1.4 não se confirmou — decisão do aceite executada, não a
+    consequência automática.** `EXPLAIN (ANALYZE, BUFFERS)` sobre 5.000 vínculos (4.000 com
+    envio ativo) mostra `Hash Anti Join` com `Seq Scan` em `document_submissions`, 3ms,
+    `uq_submission_active` fora do plano. Confirmado com o humano: **não** abrir task de
+    índice, porque nenhum índice mudaria a conta enquanto o conjunto de submissions ativas
+    couber em `work_mem` — a lacuna era a suposição do design, não uma consulta lenta. D-03 e
+    §1.4 atualizados no mesmo commit com o achado e a ressalva de escala (o que revisita isso
+    é dado real de produção, não teste antecipado).
+  - Seed e limpeza feitos por script descartável fora do repositório, contra o Postgres de
+    dev já existente (`docker compose`); banco devolvido a zero linhas ao final.
 
 ---
 
