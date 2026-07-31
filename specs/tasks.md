@@ -512,13 +512,22 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     repetição — são duas linhas — e sim manter o `deletedAt: IsNull()` em um ponto só, que é
     a guarda que um terceiro gatilho perderia ao copiar um dos métodos públicos sem revisar.
 
-- [ ] **TASK-034** · P0 · `document-types` · propaga remocao de tipo aos vinculos
+- [x] **TASK-034** · P0 · `document-types` · propaga remocao de tipo aos vinculos
   - Requisitos: REQ-13.4, REQ-15.1
   - Depende de: TASK-033, TASK-024
   - Aceite: "QUANDO um tipo de documento é removido, o sistema DEVE marcá-lo e propagar a
     remoção aos vínculos afetados de forma atômica"
-  - Teste: `document-types.integration.spec.ts` → "remove tipo e vínculos na mesma transação"
-  - Commit: `feat(document-types)`
+  - Teste: `document-types.integration.spec.ts` → "remove tipo e vínculos na mesma transação";
+    adicionado também "desfaz a remoção do tipo se a propagação falhar", pelo mesmo motivo da
+    TASK-032 — o primeiro prova a propagação e passaria igual sem transação nenhuma; só o
+    segundo prova a parte **atômica**. `document-types.service.spec.ts` → "remove tipo ativo
+    propagando aos vinculos na mesma transacao" cobre o mesmo na unidade
+  - Commit: `feat(document-types)` · `82e8a15`
+  - **Segundo `forwardRef` do sistema**, mesma justificativa do primeiro: `employee-documents`
+    já importava `document-types` desde a TASK-026, e a propagação fecha o ciclo. Grafo de DI
+    verificado subindo a aplicação, não só pelos testes.
+  - REQ-13.5 (preservar os envios dos vínculos afetados) é atendido por construção — a cascata
+    para no vínculo. A prova fica na TASK-061, quando `document_submissions` existir.
 
 ---
 
