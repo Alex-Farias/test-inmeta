@@ -77,4 +77,16 @@ export class EmployeeDocumentsService {
   async removerVinculosDoColaborador(employeeId: string, manager?: EntityManager): Promise<void> {
     await this.repository.softDeleteAllByEmployeeId(employeeId, 'EMPLOYEE_REMOVED', manager);
   }
+
+  /**
+   * Espelho do anterior para REQ-13.2, com a causa `'TYPE_REMOVED'` que
+   * REQ-13.3 exige para distinguir a cascata do desvinculo manual de REQ-04.
+   *
+   * Mesma divisao de D-10: `document-types` remove o tipo e abre a transacao,
+   * este modulo escreve em `employee_documents`. O `manager` chega de fora
+   * porque as duas escritas precisam ser atomicas (D-04.4, D-05).
+   */
+  async removerVinculosDoTipo(documentTypeId: string, manager?: EntityManager): Promise<void> {
+    await this.repository.softDeleteAllByDocumentTypeId(documentTypeId, 'TYPE_REMOVED', manager);
+  }
 }

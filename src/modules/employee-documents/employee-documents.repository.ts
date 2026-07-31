@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 
 import { DeletionCause, EmployeeDocument } from './domain/employee-document.entity';
 
@@ -50,32 +50,58 @@ export class EmployeeDocumentsRepository {
    * Uma unica instrucao para `deleted_at` e `deletion_cause`: o `CHECK
    * ck_employee_documents_deletion_cause` (D-12) amarra as duas colunas, e
    * grava-las em passos separados abriria uma janela em que a linha viola a
-   * propria invariante que o `CHECK` existe para impedir. Recebe `cause` em
-   * vez de fixar `'MANUAL'` porque a cascata de remocao de tipo (TASK-033)
-   * reusa este mesmo metodo com `'TYPE_REMOVED'`.
+   * propria invariante que o `CHECK` existe para impedir.
+   *
+   * Remocao de linha unica, so para o desvinculo manual (REQ-04). As cascatas
+   * nao passam por aqui: um `UPDATE` por vinculo seria N idas ao banco onde um
+   * `WHERE` resolve — ver `softDeleteAllByParent`.
    */
   async softDelete(id: string, cause: DeletionCause, manager?: EntityManager): Promise<void> {
     await this.repo(manager).update({ id }, { deletedAt: new Date(), deletionCause: cause });
   }
 
   /**
-   * `deletedAt: IsNull()` explicito no criterio: `update()` nao recebe o filtro
-   * automatico do `@DeleteDateColumn` (D-06 — ele cobre leitura pelo alias
-   * principal, nao escrita). Sem ele, um vinculo ja desvinculado como
-   * `'MANUAL'` teria `deleted_at` e `deletion_cause` reescritos pela cascata,
-   * destruindo justamente a distincao que D-12 existe para preservar.
+   * Corpo comum das duas cascatas. Existe para que o `deletedAt: IsNull()`
+   * viva em um ponto so: `update()` nao recebe o filtro automatico do
+   * `@DeleteDateColumn` (D-06 — ele cobre leitura pelo alias principal, nao
+   * escrita), e sem ele a cascata reescreveria `deleted_at`/`deletion_cause`
+   * de um vinculo ja desvinculado como `'MANUAL'`, destruindo justamente a
+   * distincao que D-12 existe para preservar. E a guarda que se perderia se um
+   * terceiro gatilho copiasse um dos metodos publicos sem revisar.
+   *
+   * `cause` como uniao literal, nao `string`: fecha no compilador o que o
+   * `CHECK ck_employee_documents_deletion_cause` fecha no banco — nenhum quarto
+   * valor entra por nenhum dos dois lados sem decisao explicita.
    *
    * Um unico `UPDATE` para N linhas: agregacao em SQL, sem carregar a colecao
    * para iterar no Node.
    */
-  async softDeleteAllByEmployeeId(
-    employeeId: string,
+  private async softDeleteAllByParent(
+    criteria: FindOptionsWhere<EmployeeDocument>,
     cause: DeletionCause,
     manager?: EntityManager,
   ): Promise<void> {
     await this.repo(manager).update(
-      { employeeId, deletedAt: IsNull() },
+      { ...criteria, deletedAt: IsNull() },
       { deletedAt: new Date(), deletionCause: cause },
     );
+  }
+
+  /** Cascata de remocao de colaborador (REQ-12.2). */
+  softDeleteAllByEmployeeId(
+    employeeId: string,
+    cause: DeletionCause,
+    manager?: EntityManager,
+  ): Promise<void> {
+    return this.softDeleteAllByParent({ employeeId }, cause, manager);
+  }
+
+  /** Cascata de remocao de tipo de documento (REQ-13.2). */
+  softDeleteAllByDocumentTypeId(
+    documentTypeId: string,
+    cause: DeletionCause,
+    manager?: EntityManager,
+  ): Promise<void> {
+    return this.softDeleteAllByParent({ documentTypeId }, cause, manager);
   }
 }
