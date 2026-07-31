@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
 import { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DocumentSubmission } from './domain/document-submission.entity';
@@ -34,5 +34,20 @@ export class SubmissionsController {
     @Query() pagination: PaginationQueryDto,
   ): Promise<HistoricoDeEnvios> {
     return this.service.consultarHistorico(employeeDocumentId, pagination);
+  }
+
+  /**
+   * `active` como identificador da subcolecao, e nao o uuid da submission: o
+   * envio removivel e sempre o vigente (REQ-08.1), e uma rota por id convidaria
+   * a remover uma versao no meio do historico — que REQ-08.3 proibe. O caminho
+   * declara qual e o alvo em vez de aceitar qualquer um e recusar depois.
+   *
+   * `204` como os outros tres `DELETE` do projeto: a remocao nao tem
+   * representacao a devolver, e o estado seguinte se le no historico.
+   */
+  @Delete('active')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removerEnvioAtivo(@Param('employeeDocumentId') employeeDocumentId: string): Promise<void> {
+    return this.service.removerEnvioAtivo(employeeDocumentId);
   }
 }

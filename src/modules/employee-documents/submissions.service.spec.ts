@@ -19,6 +19,7 @@ describe('SubmissionsService', () => {
   let findNextVersion: jest.Mock;
   let deactivateActive: jest.Mock;
   let create: jest.Mock;
+  let softDeleteActive: jest.Mock;
   let findSubmittableById: jest.Mock;
   let service: SubmissionsService;
 
@@ -28,10 +29,12 @@ describe('SubmissionsService', () => {
     findNextVersion = jest.fn().mockResolvedValue(1);
     deactivateActive = jest.fn();
     create = jest.fn();
+    softDeleteActive = jest.fn().mockResolvedValue(true);
     const repository = {
       findNextVersion,
       deactivateActive,
       create,
+      softDeleteActive,
     } as unknown as SubmissionsRepository;
 
     findSubmittableById = jest.fn().mockResolvedValue(vinculo);
@@ -125,5 +128,39 @@ describe('SubmissionsService', () => {
     create.mockRejectedValue(falha);
 
     await expect(service.enviar('vinculo-1')).rejects.toThrow(falha);
+  });
+
+  describe('remoção do envio ativo', () => {
+    it('remove envio ativo sem reativar o anterior', async () => {
+      await service.removerEnvioAtivo('vinculo-1');
+
+      expect(softDeleteActive).toHaveBeenCalledWith(vinculo.id);
+
+      // O que D-13 recusa e uma **escrita** que traga a versao anterior de
+      // volta. Nesta camada isso se prova pela ausencia dela: nenhuma insercao,
+      // nenhuma reativacao, nenhum toque em outra linha do historico. Que as
+      // duas colunas caem na mesma linha e do repositorio, e ele esta dublado
+      // — quem prova aquilo e a integracao.
+      expect(create).not.toHaveBeenCalled();
+      expect(deactivateActive).not.toHaveBeenCalled();
+    });
+
+    it('responde não encontrado para envio já removido', async () => {
+      // Zero linhas afetadas: ou o envio ja foi removido, ou o vinculo nunca
+      // teve envio. REQ-08.6 quer o mesmo 404 nos dois.
+      softDeleteActive.mockResolvedValue(false);
+
+      await expect(service.removerEnvioAtivo('vinculo-1')).rejects.toThrow(EntityNotFoundError);
+    });
+
+    it('não tenta remover envio de vínculo removido ou inexistente', async () => {
+      // REQ-14.8: escrita sobre registro removido responde nao encontrado. A
+      // guarda vem antes do `UPDATE`, e nao depois — nao ha o que desfazer.
+      findSubmittableById.mockResolvedValue(null);
+
+      await expect(service.removerEnvioAtivo('inexistente')).rejects.toThrow(EntityNotFoundError);
+
+      expect(softDeleteActive).not.toHaveBeenCalled();
+    });
   });
 });

@@ -84,6 +84,44 @@ export class SubmissionsService {
   }
 
   /**
+   * Remocao do envio ativo (REQ-08).
+   *
+   * **Nao critica (D-04).** E um `UPDATE` de linha unica em
+   * `document_submissions`: a atomicidade vem do proprio statement, e abrir
+   * transacao aqui seria cerimonia sem garantia adicional. Esta entre as quatro
+   * operacoes que a tabela de D-04 classifica explicitamente como nao criticas
+   * — a discriminacao e o que o enunciado pede demonstrar, e trata-la como
+   * critica por uniformidade apagaria a distincao.
+   *
+   * **`findSubmittableById`, o mesmo de `enviar`.** Remover envio e caminho de
+   * **escrita**, e D-06 e explicito de que a regra do JOIN vale igual dos dois
+   * lados; REQ-14.8 manda responder nao encontrado para escrita solicitada sobre
+   * registro removido. Vinculo, colaborador ou tipo removido saem todos como o
+   * mesmo 404, sem revelar qual elo caiu.
+   *
+   * O contraste com `consultarHistorico`, logo abaixo, e deliberado e vale o
+   * paragrafo: **ler** o historico de um vinculo removido responde 200, e e a
+   * unica excecao declarada a REQ-14.2. **Escrever** nele responde 404.
+   *
+   * As duas consultas produzem o mesmo 404 por motivos diferentes, e os dois
+   * estao em REQ-08.6: o vinculo nao esta la para receber a operacao, ou nao ha
+   * envio ativo — porque ja foi removido, ou porque nunca houve. Distinguir
+   * exigiria uma segunda consulta so para detalhar um estado que o chamador nao
+   * pode agir de forma diferente.
+   */
+  async removerEnvioAtivo(employeeDocumentId: string): Promise<void> {
+    const vinculo = await this.employeeDocumentsRepository.findSubmittableById(employeeDocumentId);
+    if (!vinculo) {
+      throw new EntityNotFoundError('Vinculo nao encontrado.');
+    }
+
+    const removido = await this.repository.softDeleteActive(vinculo.id);
+    if (!removido) {
+      throw new EntityNotFoundError('Envio ativo nao encontrado.');
+    }
+  }
+
+  /**
    * Historico completo do vinculo (REQ-09).
    *
    * **Nao resolve o vinculo antes de consultar**, ao contrario de `enviar`. E

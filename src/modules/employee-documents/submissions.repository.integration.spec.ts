@@ -200,6 +200,84 @@ describe('DocumentSubmission (integration)', () => {
     });
   });
 
+  describe('softDeleteActive', () => {
+    it('marca removido e inativo na mesma linha', async () => {
+      const vinculo = await criarVinculo('CARTEIRA VACINACAO');
+      const criado = await repository.create(vinculo.id, 1);
+
+      await expect(repository.softDeleteActive(vinculo.id)).resolves.toBe(true);
+
+      const linha = await dataSource
+        .getRepository(DocumentSubmission)
+        .findOne({ where: { id: criado.id }, withDeleted: true });
+
+      // As duas colunas juntas sao a terceira linha da tabela de 4.3: `false` +
+      // data significa que o **proprio envio** foi removido. So `deleted_at`
+      // deixaria uma linha removida se declarando ativa no historico.
+      expect(linha?.isActive).toBe(false);
+      expect(linha?.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('não reativa nem reescreve a versão anterior', async () => {
+      const vinculo = await criarVinculo('COMPROVANTE RESIDENCIA');
+      const primeiro = await repository.create(vinculo.id, 1);
+      await repository.deactivateActive(vinculo.id);
+      const segundo = await repository.create(vinculo.id, 2);
+
+      await repository.softDeleteActive(vinculo.id);
+
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      const anterior = await submissions.findOne({
+        where: { id: primeiro.id },
+        withDeleted: true,
+      });
+
+      // O nucleo de D-13: a versao 1 nao volta a ser ativa, e tambem nao e
+      // arrastada para removida — ela e historico (REQ-08.3), e o vinculo
+      // simplesmente passa a nao ter envio ativo nenhum.
+      expect(anterior?.isActive).toBe(false);
+      expect(anterior?.deletedAt).toBeNull();
+
+      const ativos = await submissions.countBy({ employeeDocumentId: vinculo.id, isActive: true });
+      expect(ativos).toBe(0);
+
+      const removido = await submissions.findOne({ where: { id: segundo.id }, withDeleted: true });
+      expect(removido?.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('não alcança envio de outro vínculo', async () => {
+      const alvo = await criarVinculo('CERTIDAO NASCIMENTO');
+      const outro = await criarVinculo('CERTIDAO CASAMENTO');
+      const doAlvo = await repository.create(alvo.id, 1);
+      const doOutro = await repository.create(outro.id, 1);
+
+      await repository.softDeleteActive(alvo.id);
+
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      expect(
+        (await submissions.findOne({ where: { id: doAlvo.id }, withDeleted: true }))?.deletedAt,
+      ).toBeInstanceOf(Date);
+      expect((await submissions.findOneBy({ id: doOutro.id }))?.deletedAt).toBeNull();
+    });
+
+    it('devolve falso quando o vínculo não tem envio ativo', async () => {
+      const vinculo = await criarVinculo('LAUDO MEDICO');
+      await repository.create(vinculo.id, 1);
+      await repository.softDeleteActive(vinculo.id);
+
+      // Segunda remocao: `deleted_at IS NULL` no predicado a faz afetar zero
+      // linhas em vez de reescrever a data ja gravada. E o falso que vira o 404
+      // de REQ-08.6.
+      await expect(repository.softDeleteActive(vinculo.id)).resolves.toBe(false);
+    });
+
+    it('devolve falso para vínculo que nunca teve envio', async () => {
+      const vinculo = await criarVinculo('CONTRATO');
+
+      await expect(repository.softDeleteActive(vinculo.id)).resolves.toBe(false);
+    });
+  });
+
   describe('create', () => {
     it('registra o envio como ativo no instante da entrega', async () => {
       const vinculo = await criarVinculo('PIS');

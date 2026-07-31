@@ -67,6 +67,39 @@ export class SubmissionsRepository {
   }
 
   /**
+   * Remove o envio ativo do vinculo (REQ-08.1, REQ-08.2, D-13).
+   *
+   * **As duas colunas no mesmo `UPDATE`.** D-13 manda marcar `deleted_at` **e**
+   * `is_active = false`, e 4.3 do design le as duas juntas: `false` + data
+   * significa "o proprio envio foi removido", e `true` + data e declarado estado
+   * invalido. Gravar em dois passos abriria exatamente essa janela. Para o
+   * indice parcial `uq_submission_active` a segunda coluna e redundante — mas o
+   * historico e lido por gente, e uma linha removida que ainda se declara ativa
+   * mente sobre REQ-08.3.
+   *
+   * **Nao reativa versao anterior**, e nao ha o que fazer para isso: a ausencia
+   * de escrita e a decisao. O vinculo volta a ser **lido** como pendente porque
+   * o `NOT EXISTS` de 1.4 pergunta por envio ativo, nao por existencia de envio
+   * (D-03). Nenhuma consulta trata esse estado como caso especial.
+   *
+   * Mesmo predicado de `deactivateActive` e de `uq_submission_active`, pela
+   * mesma razao comentada la. `deleted_at IS NULL` explicito porque `update()`
+   * nao recebe o filtro automatico do `@DeleteDateColumn` (D-06) — e e ele que
+   * faz a segunda remocao afetar zero linhas em vez de reescrever `deleted_at`.
+   *
+   * Devolve se alcancou alguma linha: zero linhas e envio ja removido ou vinculo
+   * que nunca teve envio, e o service traduz nos dois casos em 404 (REQ-08.6).
+   */
+  async softDeleteActive(employeeDocumentId: string, manager?: EntityManager): Promise<boolean> {
+    const resultado = await this.repo(manager).update(
+      { employeeDocumentId, isActive: true, deletedAt: IsNull() },
+      { isActive: false, deletedAt: new Date() },
+    );
+
+    return (resultado.affected ?? 0) > 0;
+  }
+
+  /**
    * Historico completo do vinculo (REQ-09.1, REQ-09.2, REQ-09.3).
    *
    * `withDeleted()` e o requisito, nao vazamento. REQ-14.2 manda excluir
