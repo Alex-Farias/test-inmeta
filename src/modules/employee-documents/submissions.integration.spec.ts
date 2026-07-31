@@ -193,6 +193,67 @@ describe('SubmissionsService (integration)', () => {
   });
 
   /**
+   * REQ-08.4 pela porta que o cliente usa. O equivalente em
+   * `submissions.repository.integration.spec.ts` monta o ciclo chamando o
+   * repositorio direto; este passa por `enviar` e `removerEnvioAtivo`, que e
+   * como a sequencia acontece de verdade — e por isso enxerga tambem a ordem em
+   * que `enviar` desativa, recalcula e insere.
+   *
+   * E o teste que falha se alguem "corrigir" o `withDeleted()` de
+   * `findNextVersion` por parecer vazamento de soft delete. O comentario la
+   * pede que se pare antes de mexer; este e o que cobra.
+   */
+  describe('versão após remoção', () => {
+    it('continua a contagem de versões após a remoção do envio ativo', async () => {
+      const vinculo = await criarVinculo('Ficha');
+      const primeiro = await service.enviar(vinculo.id);
+      expect(primeiro.version).toBe(1);
+
+      await service.removerEnvioAtivo(vinculo.id);
+
+      const segundo = await service.enviar(vinculo.id);
+
+      // Nao volta a ser 1: o numero ja emitido esta queimado neste vinculo
+      // (REQ-08.4), mesmo com a linha que o usava removida.
+      expect(segundo.version).toBe(2);
+      expect(segundo.isActive).toBe(true);
+
+      const historico = await service.consultarHistorico(vinculo.id, { page: 1, limit: 20 });
+      expect(historico.items.map((envio) => envio.version)).toEqual([2, 1]);
+
+      // A versao 1 continua removida — o novo envio nao a ressuscitou, e o
+      // buraco na sequencia que o historico evitaria mostrar nao existe.
+      expect(historico.items[1].deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('mantém o vínculo pendente enquanto não há novo envio', async () => {
+      const vinculo = await criarVinculo('Acordo');
+      await service.enviar(vinculo.id);
+
+      await service.removerEnvioAtivo(vinculo.id);
+
+      // O estado que D-13 declara valido e esperado: vinculo **pendente com
+      // historico**. Nenhuma versao anterior foi reativada, e a pendencia se le
+      // da ausencia de envio ativo, nao de coluna de estado (D-03).
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      expect(await submissions.countBy({ employeeDocumentId: vinculo.id, isActive: true })).toBe(0);
+
+      const historico = await service.consultarHistorico(vinculo.id, { page: 1, limit: 20 });
+      expect(historico.total).toBe(1);
+    });
+
+    it('responde não encontrado ao remover envio já removido', async () => {
+      const vinculo = await criarVinculo('Aditivo');
+      await service.enviar(vinculo.id);
+      await service.removerEnvioAtivo(vinculo.id);
+
+      // REQ-08.6 contra Postgres real: o `deleted_at IS NULL` do predicado faz o
+      // segundo `UPDATE` afetar zero linhas em vez de reescrever a data.
+      await expect(service.removerEnvioAtivo(vinculo.id)).rejects.toThrow(EntityNotFoundError);
+    });
+  });
+
+  /**
    * REQ-09.4, REQ-09.5 e REQ-14.6 — a **excecao declarada a REQ-14.2**, e a
    * unica do sistema (design 4.3).
    *

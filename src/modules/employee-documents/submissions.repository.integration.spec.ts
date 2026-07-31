@@ -276,6 +276,44 @@ describe('DocumentSubmission (integration)', () => {
 
       await expect(repository.softDeleteActive(vinculo.id)).resolves.toBe(false);
     });
+
+    /**
+     * REQ-08.4, e o terceiro teste do projeto sobre numero de versao — os outros
+     * dois provam outra coisa, e a distincao vale registrar:
+     *
+     * | Teste | O que prova |
+     * |---|---|
+     * | `describe('migration')` → "não reemite versão de envio removido" | o **indice**: `uq_submission_version` nao e parcial, entao a versao removida segue ocupando o slot |
+     * | `findNextVersion` → "conta envios removidos ao calcular a próxima versão" | o **calculo** isolado: `withDeleted` devolve 2, nao 1 |
+     * | este | o **ciclo**: remocao de producao, recalculo e insercao seguinte de fato entrando |
+     *
+     * Os dois primeiros sao contrapositivos — mostram que a colisao aconteceria.
+     * Este mostra que ela **nao acontece** quando o caminho e percorrido inteiro,
+     * e e o unico que passa por `softDeleteActive` em vez de `softDelete` cru.
+     */
+    it('não reemite número de versão já usado', async () => {
+      const vinculo = await criarVinculo('FICHA REGISTRO');
+      await repository.create(vinculo.id, 1);
+
+      await repository.softDeleteActive(vinculo.id);
+
+      // O contador nao reinicia: a versao 1 esta queimada neste vinculo, ainda
+      // que removida e ainda que nao haja envio ativo nenhum agora.
+      await expect(repository.findNextVersion(vinculo.id)).resolves.toBe(2);
+
+      const segundo = await repository.create(vinculo.id, 2);
+      expect(segundo.version).toBe(2);
+
+      const historico = await repository.findHistory(vinculo.id, { page: 1, limit: 20 });
+
+      // Duas linhas, sem buraco e sem repeticao: a 1 removida e a 2 ativa. Se o
+      // contador reiniciasse, `uq_submission_version` teria rejeitado a
+      // insercao acima — e o historico e onde a consequencia se le.
+      expect(historico.total).toBe(2);
+      expect(historico.items.map((envio) => envio.version)).toEqual([2, 1]);
+      expect(historico.items[0].deletedAt).toBeNull();
+      expect(historico.items[1].deletedAt).toBeInstanceOf(Date);
+    });
   });
 
   describe('create', () => {
