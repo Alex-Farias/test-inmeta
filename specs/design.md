@@ -459,8 +459,29 @@ mágico num projeto avaliado por revisão de código.
 
 **Consequência.** REQ-14.3 e REQ-14.4 — vínculo cujo colaborador ou tipo foi removido some de
 pendências e estatísticas mesmo sem estar marcado — são atendidos por esses JOINs, não por
-propagação de estado. A propagação de D-04.5 e D-04.6 é defesa em profundidade, não a
+propagação de estado. A propagação das operações 3 e 4 de D-04 é defesa em profundidade, não a
 garantia primária.
+
+**A regra vale igual no caminho de escrita.** O parágrafo acima fala de leitura, mas a mesma
+lógica decide REQ-06.5: o envio para um vínculo cujo colaborador está removido é rejeitado
+porque a consulta que resolve o vínculo faz o JOIN, não porque a cascata marcou o vínculo
+antes. `EmployeeDocumentsRepository.findSubmittableById` existe separado de `findActiveById`
+exatamente por isso — o segundo enxerga só `employee_documents.deleted_at`, e passaria um
+vínculo de colaborador removido que a cascata ainda não tivesse alcançado.
+
+Os dois JOINs cobrem três casos com um 404 só: vínculo inexistente ou removido (REQ-06.4),
+colaborador removido (REQ-06.5) e tipo removido (REQ-14.8). Não se distingue qual elo caiu —
+detalhar revelaria a existência de registro removido a quem não deveria vê-lo.
+
+O teste que sustenta isso constrói o estado **sem** passar pela cascata, removendo o pai
+direto pelo `DataSource`. Feito pelo service, o vínculo já viria marcado e o caso passaria
+mesmo sem JOIN nenhum — provaria a propagação, não o requisito. Verificado por falsificação:
+retirados os JOINs, os casos de colaborador e tipo removidos falham; os de vínculo removido e
+inexistente continuam passando, porque esses o filtro do alias principal já cobre.
+
+**A desvinculação (REQ-04) ainda usa `findActiveById`**, sem os JOINs. Fica registrado como
+assimetria conhecida, com task própria em `tasks.md`; não foi corrigida de carona no commit
+de envio.
 
 ---
 

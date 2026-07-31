@@ -47,6 +47,52 @@ export class EmployeeDocumentsRepository {
   }
 
   /**
+   * Vinculo apto a receber envio: ele proprio ativo, **e** de colaborador ativo,
+   * **e** de tipo de documento ativo. `null` em qualquer um dos casos, para que
+   * o service devolva 404 sem distinguir qual elo caiu (REQ-06.4, REQ-06.5,
+   * REQ-14.8).
+   *
+   * **Existe separado de `findActiveById` por causa dos dois JOINs.** O filtro
+   * automatico do `@DeleteDateColumn` cobre apenas o alias principal (D-06):
+   * `findActiveById` enxerga `employee_documents.deleted_at` e mais nada. Um
+   * vinculo cujo colaborador foi removido, mas que ainda nao foi marcado, passa
+   * por ele — e REQ-06.5 exige rejeitar exatamente esse caso.
+   *
+   * **Por que nao confiar na cascata.** Hoje remover um colaborador propaga a
+   * remocao aos vinculos, entao na pratica o vinculo ja viria marcado. D-06 e
+   * explicito sobre nao aceitar isso como garantia: a propagacao e defesa em
+   * profundidade, e a garantia primaria e o JOIN. Depender da cascata seria
+   * depender de duas escritas terem acontecido na ordem certa para que uma
+   * leitura responda direito.
+   *
+   * **JOIN por nome de tabela, nao por entidade**, e por `innerJoin` e nao
+   * `innerJoinAndSelect`: o vinculo entre modulos e por coluna uuid simples, sem
+   * `@ManyToOne` (ver o comentario em `employee-document.entity.ts`). Importar
+   * `Employee` e `DocumentType` aqui contradiria 2.1 do design; o join fica no
+   * nivel do SQL, que e onde ele de fato mora.
+   *
+   * Cada `ON` repete `AND <alias>.deleted_at IS NULL`. E o item do checklist que
+   * mais falha, e este e o primeiro JOIN manual em codigo de producao do
+   * projeto.
+   */
+  findSubmittableById(id: string, manager?: EntityManager): Promise<EmployeeDocument | null> {
+    return this.repo(manager)
+      .createQueryBuilder('vinculo')
+      .innerJoin(
+        'employees',
+        'colaborador',
+        'colaborador.id = vinculo.employee_id AND colaborador.deleted_at IS NULL',
+      )
+      .innerJoin(
+        'document_types',
+        'tipo',
+        'tipo.id = vinculo.document_type_id AND tipo.deleted_at IS NULL',
+      )
+      .where('vinculo.id = :id', { id })
+      .getOne();
+  }
+
+  /**
    * Uma unica instrucao para `deleted_at` e `deletion_cause`: o `CHECK
    * ck_employee_documents_deletion_cause` (D-12) amarra as duas colunas, e
    * grava-las em passos separados abriria uma janela em que a linha viola a

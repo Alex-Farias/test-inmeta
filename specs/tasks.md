@@ -741,10 +741,57 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 - [ ] **TASK-043** · P0 · `submissions` · rejeita envio para vinculo removido
   - Requisitos: REQ-06.4, REQ-06.5, REQ-14.8
   - Depende de: TASK-038, TASK-030
-  - Aceite: "SE o envio for solicitado para um vínculo removido ou inexistente, ENTÃO o
-    sistema DEVE responder que o recurso não foi encontrado, e não com erro interno"
-  - Teste: `submissions.service.spec.ts` → "responde não encontrado para vínculo removido"
+  - Aceite, um 404 para os três requisitos que a task já declarava:
+    - REQ-06.4 — "SE o envio for solicitado para um vínculo removido ou inexistente, ENTÃO o
+      sistema DEVE responder que o recurso não foi encontrado, e não com erro interno"
+    - REQ-06.5 — "SE o envio for solicitado para um vínculo cujo colaborador está removido,
+      ENTÃO o sistema DEVE rejeitar a operação"
+    - REQ-14.8 — "SE uma operação de escrita for solicitada sobre um registro removido, ENTÃO
+      o sistema DEVE responder que o recurso não foi encontrado" — aqui, o vínculo cujo tipo
+      de documento foi removido
+  - Teste: `submissions.service.spec.ts` → "responde não encontrado para vínculo removido ou
+    inexistente", para a ramificação; `submissions.integration.spec.ts` →
+    `describe('vínculo inválido')` com os quatro casos, para a consulta
   - Commit: `feat(submissions)`
+  - **Aceite expandido, requisitos inalterados.** A redação original citava só a frase de
+    REQ-06.4, embora a linha `Requisitos` já listasse os três. Os três são fechados pelo mesmo
+    método e passaram a aparecer explicitamente — rastreabilidade não deve depender de quem lê
+    o comentário do código.
+  - **O teste declarado não provava o requisito.** O caso em `submissions.service.spec.ts`
+    mocka o repositório: prova que o service ramifica quando vem `null`, e passaria igual se a
+    consulta não tivesse JOIN nenhum. O que decide REQ-06.5 é **quando** a consulta devolve
+    `null`, e isso só o Postgres responde. Mesmo padrão da re-escopagem da TASK-039 — o caso
+    unitário permanece, mas a prova do requisito é a de integração.
+  - **`findSubmittableById`, separado de `findActiveById`.** Faz `INNER JOIN` em `employees` e
+    `document_types` repetindo `AND <alias>.deleted_at IS NULL` (D-06). É o **primeiro JOIN
+    manual em código de produção** do projeto. JOIN por nome de tabela, não por entidade: o
+    vínculo entre módulos é por coluna uuid, sem `@ManyToOne`, e importar entidade alheia
+    contradiria §2.1.
+  - **A cascata não é a garantia.** Sem os JOINs, REQ-06.5 dependeria de a propagação de
+    TASK-032 ter marcado o vínculo — e D-06 declara a propagação como defesa em profundidade.
+    Os testes de integração removem o pai **direto pelo `DataSource`**, sem cascata, porque é
+    a única construção que separa o que o JOIN garante do que a propagação mascara.
+  - **Falsificado antes de commitar.** Retirados os dois `innerJoin`, os casos de colaborador
+    e tipo removidos falham — o envio é aceito e grava a versão 1 — enquanto os de vínculo
+    removido e inexistente continuam passando, porque esses o filtro automático do alias
+    principal já cobre. É a medida exata do que os JOINs acrescentam.
+
+- [ ] **TASK-079** · P1 · `employee-documents` · exige cadeia ativa tambem na desvinculacao
+  - Requisitos: REQ-14.8
+  - Depende de: TASK-043
+  - Aceite: desvinculação de vínculo cujo colaborador ou tipo esteja removido — ainda que o
+    próprio vínculo não esteja marcado — responde que o recurso não foi encontrado, e não com
+    erro interno
+  - Teste: `employee-documents.integration.spec.ts` → "recusa desvinculação de vínculo com
+    colaborador removido"
+  - Commit: `feat(employee-documents)`
+  - **Assimetria descoberta na TASK-043 e deixada de fora dela de propósito.** A desvinculação
+    (`employee-documents.service.ts`) segue usando `findActiveById`, sem os JOINs, então herda
+    exatamente a dependência da cascata que a TASK-043 removeu do caminho de envio. Corrigir
+    ali teria mudado o comportamento de REQ-04 dentro de um commit que diz tratar de envio.
+  - **Menor gravidade que a TASK-043, e por isso P1.** Desvincular um vínculo cujo pai já foi
+    removido é operação idempotente na prática — o registro já está fora de toda consulta. O
+    que se ganha é uniformidade da regra de D-06, não correção de comportamento observável.
 
 - [ ] **TASK-044** · P0 · `submissions` · adiciona consulta do historico de versoes
   - Requisitos: REQ-09.1, REQ-09.2, REQ-09.3

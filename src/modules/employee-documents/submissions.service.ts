@@ -38,7 +38,14 @@ export class SubmissionsService {
    * submissions a cada consulta. Nao ha coluna de estado que possa divergir.
    */
   async enviar(employeeDocumentId: string): Promise<DocumentSubmission> {
-    const vinculo = await this.employeeDocumentsRepository.findActiveById(employeeDocumentId);
+    // `findSubmittableById`, e nao `findActiveById`: alem do proprio vinculo, ele
+    // exige colaborador e tipo ativos. Os tres casos saem como o mesmo 404 —
+    // vinculo inexistente ou removido (REQ-06.4), colaborador removido
+    // (REQ-06.5) e tipo removido (REQ-14.8). Nao ha valor em distinguir qual elo
+    // caiu: para quem chama, o vinculo nao esta la para receber envio, e detalhar
+    // o motivo revelaria a existencia de registro removido a quem nao deveria
+    // ve-lo.
+    const vinculo = await this.employeeDocumentsRepository.findSubmittableById(employeeDocumentId);
     if (!vinculo) {
       throw new EntityNotFoundError('Vinculo nao encontrado.');
     }

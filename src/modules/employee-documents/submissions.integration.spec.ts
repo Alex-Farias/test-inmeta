@@ -5,6 +5,7 @@ import { CreateEmployees1785416355470 } from '../../database/migrations/17854163
 import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785446317559-CreateDocumentTypes';
 import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/1785453770311-CreateEmployeeDocuments';
 import { CreateDocumentSubmissions1785470132175 } from '../../database/migrations/1785470132175-CreateDocumentSubmissions';
+import { EntityNotFoundError } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { DocumentType } from '../document-types/domain/document-type.entity';
 import { Employee } from '../employees/domain/employee.entity';
@@ -125,6 +126,69 @@ describe('SubmissionsService (integration)', () => {
       const submissions = dataSource.getRepository(DocumentSubmission);
       expect((await submissions.findOneBy({ id: primeiro.id }))?.isActive).toBe(true);
       expect(await submissions.count()).toBe(1);
+    });
+  });
+
+  /**
+   * REQ-06.4, REQ-06.5 e REQ-14.8 — os tres casos que `findSubmittableById`
+   * fecha, e a razao de ele existir separado de `findActiveById`.
+   *
+   * **Por que integracao e nao unidade.** O caso equivalente em
+   * `submissions.service.spec.ts` mocka o repositorio: ele prova que o service
+   * ramifica quando vem `null`, e passaria igual se a consulta nao tivesse JOIN
+   * nenhum. O que decide REQ-06.5 e **quando** a consulta devolve `null`, e isso
+   * so o Postgres responde.
+   */
+  describe('vínculo inválido', () => {
+    /** Nenhum envio gravado — o 404 vem antes de qualquer escrita. */
+    async function esperarRecusa(id: string): Promise<void> {
+      await expect(service.enviar(id)).rejects.toThrow(EntityNotFoundError);
+      expect(await dataSource.getRepository(DocumentSubmission).count()).toBe(0);
+    }
+
+    it('responde não encontrado para vínculo inexistente', async () => {
+      await esperarRecusa('3f7c1e9a-2b64-4d05-9a18-6c0e5b7d4a21');
+    });
+
+    it('responde não encontrado para vínculo removido', async () => {
+      const vinculo = await criarVinculo('CTPS');
+      await dataSource
+        .getRepository(EmployeeDocument)
+        .update({ id: vinculo.id }, { deletedAt: new Date(), deletionCause: 'MANUAL' });
+
+      await esperarRecusa(vinculo.id);
+    });
+
+    it('responde não encontrado para vínculo de colaborador removido', async () => {
+      const vinculo = await criarVinculo('Diploma');
+
+      // O colaborador e removido **direto pelo dataSource**, sem passar pelo
+      // service que dispara a cascata. E de proposito: o vinculo fica com
+      // `deleted_at NULL`, que e o estado que so o JOIN alcanca. Removido pelo
+      // service, ele ja viria marcado e este caso seria repeticao do anterior —
+      // passaria mesmo sem JOIN algum, provando a cascata em vez do requisito.
+      //
+      // D-06 diz que a cascata e defesa em profundidade e o JOIN e a garantia
+      // primaria. Este teste e o que sustenta essa frase para REQ-06.5.
+      await dataSource
+        .getRepository(Employee)
+        .update({ id: vinculo.employeeId }, { deletedAt: new Date() });
+
+      await esperarRecusa(vinculo.id);
+    });
+
+    it('responde não encontrado para vínculo de tipo removido', async () => {
+      const vinculo = await criarVinculo('Comprovante');
+
+      // Mesma construcao, do outro lado do vinculo (REQ-14.8): escrita sobre
+      // registro cujo contexto foi removido responde 404, nao erro interno.
+      // Enviar documento de um tipo que a organizacao deixou de exigir nao tem
+      // significado.
+      await dataSource
+        .getRepository(DocumentType)
+        .update({ id: vinculo.documentTypeId }, { deletedAt: new Date() });
+
+      await esperarRecusa(vinculo.id);
     });
   });
 });

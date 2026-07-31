@@ -19,7 +19,7 @@ describe('SubmissionsService', () => {
   let findNextVersion: jest.Mock;
   let deactivateActive: jest.Mock;
   let create: jest.Mock;
-  let findActiveById: jest.Mock;
+  let findSubmittableById: jest.Mock;
   let service: SubmissionsService;
 
   const vinculo = { id: 'vinculo-1' } as EmployeeDocument;
@@ -34,9 +34,9 @@ describe('SubmissionsService', () => {
       create,
     } as unknown as SubmissionsRepository;
 
-    findActiveById = jest.fn().mockResolvedValue(vinculo);
+    findSubmittableById = jest.fn().mockResolvedValue(vinculo);
     const employeeDocumentsRepository = {
-      findActiveById,
+      findSubmittableById,
     } as unknown as EmployeeDocumentsRepository;
 
     const transactionRunner = {
@@ -80,7 +80,12 @@ describe('SubmissionsService', () => {
   });
 
   it('responde não encontrado para vínculo removido ou inexistente', async () => {
-    findActiveById.mockResolvedValue(null);
+    // Cobre a **ramificacao**, nao a consulta: com o repositorio dublado, este
+    // caso passaria igual se `findSubmittableById` nao tivesse JOIN nenhum. Quem
+    // prova que colaborador e tipo removidos produzem `null` e o
+    // `describe('vinculo invalido')` de `submissions.integration.spec.ts`, contra
+    // Postgres real. Os dois sao necessarios e nenhum substitui o outro.
+    findSubmittableById.mockResolvedValue(null);
 
     await expect(service.enviar('inexistente')).rejects.toThrow(EntityNotFoundError);
 
