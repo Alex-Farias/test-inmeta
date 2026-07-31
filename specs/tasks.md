@@ -930,12 +930,16 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     TASK-047 registrou como válido e sem cobertura até aqui, e falsifica um `NOT EXISTS` que
     esquecesse o `is_active` (excluiria também quem só tem histórico).
 
-- [ ] **TASK-049** · P1 · `employee-documents` · adiciona filtros de pendentes por colaborador e tipo
+- [x] **TASK-049** · P1 · `employee-documents` · adiciona filtros de pendentes por colaborador e tipo
   - Requisitos: REQ-10.2, REQ-10.3, REQ-10.4
   - Depende de: TASK-048
   - Aceite: filtra por colaborador, por tipo, e aplica ambos de forma cumulativa
   - Teste: `employee-documents.repository.integration.spec.ts` → "aplica filtros cumulativamente"
-  - Commit: `feat(employee-documents)`
+  - Commit: `feat(employee-documents)` · `f8bc13c`
+  - **Teste expandido para três `it()`.** O nome único declarado prova só o caso cumulativo;
+    sozinho ele passaria com um filtro quebrado desde que o outro compensasse. Adicionados
+    "filtra por colaborador" e "filtra por tipo", isolando cada um (REQ-10.2, REQ-10.3), mesmo
+    padrão de expansão da TASK-028/030/043.
 
 - [ ] **TASK-050** · P1 · `employee-documents` · retorna vazio para filtro com registro removido
   - Requisitos: REQ-10.7
