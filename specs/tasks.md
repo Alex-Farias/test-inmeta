@@ -963,13 +963,18 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     `DataSource`** (bypassa a cascata, mesma técnica de TASK-043/045, para isolar a defesa do
     JOIN) e id que nunca existiu.
 
-- [ ] **TASK-051** · P0 · `employee-documents` · cobre coerencia da pendencia derivada
+- [x] **TASK-051** · P0 · `employee-documents` · cobre coerencia da pendencia derivada
   - Requisitos: REQ-15.4
   - Depende de: TASK-048, TASK-046
   - Aceite: após envio, reenvio, remoção de envio e soft delete, a listagem de pendentes
     reflete exatamente o estado real das submissions
   - Teste: `pending.coherence.integration.spec.ts` → "listagem acompanha cada transição de estado"
-  - Commit: `test(employee-documents)`
+  - Commit: `test(employee-documents)` · `f7406bc`
+  - **Sem código de produção novo** — um dos quatro testes que `design.md` §5 chama de "testes
+    que carregam o peso da avaliação" (REQ-15.4), provando que D-03 satisfaz a coerência por
+    construção. Um único vínculo passa por vincular → enviar → reenviar → remover envio ativo
+    → desvincular, conferindo `listarPendentes` a cada passo — via `EmployeeDocumentsService`/
+    `SubmissionsService`, não repositório direto, pela mesma porta que a rota HTTP usa.
 
 - [ ] **TASK-052** · P0 · `employee-documents` · exclui de pendentes vinculos de colaborador ou tipo removido
   - Requisitos: REQ-14.3, REQ-14.4
