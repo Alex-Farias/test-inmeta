@@ -385,5 +385,51 @@ describe('EmployeeDocumentsRepository (integration)', () => {
         expect(pagina.items).toEqual([]);
       });
     });
+
+    /**
+     * REQ-14.3, REQ-14.4 (TASK-052). Sem filtro nenhum — e a listagem geral,
+     * irma do bloco de filtro da TASK-050 acima. Mesma tecnica: remove o
+     * colaborador/tipo **direto pelo `DataSource`**, sem passar pela cascata de
+     * TASK-032/034, para provar que quem exclui e o `innerJoin` com
+     * `deleted_at IS NULL` (D-06) e nao a marcacao do proprio vinculo.
+     */
+    describe('exclusao por colaborador ou tipo removido', () => {
+      it('exclui pendente de colaborador removido', async () => {
+        const employees = dataSource.getRepository(Employee);
+        const documentTypes = dataSource.getRepository(DocumentType);
+
+        const ana = await employees.save(
+          employees.create({ name: 'Ana', email: 'ana-pendente-removida@example.com' }),
+        );
+        const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+        const [vinculo] = await repository.createMany(ana.id, [cpf.id]);
+
+        await dataSource.getRepository(Employee).softDelete({ id: ana.id });
+
+        const pagina = await repository.findPending({ page: 1, limit: 20 });
+
+        expect(pagina.items.map((item) => item.id)).not.toContain(vinculo.id);
+      });
+
+      // Espelho do teste acima para REQ-14.4 — o nome declarado em `tasks.md`
+      // cobre só o lado do colaborador, mesmo padrao de expansao simetrica das
+      // TASK-031/033.
+      it('exclui pendente de tipo removido', async () => {
+        const employees = dataSource.getRepository(Employee);
+        const documentTypes = dataSource.getRepository(DocumentType);
+
+        const ana = await employees.save(
+          employees.create({ name: 'Ana', email: 'ana-tipo-removido@example.com' }),
+        );
+        const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF-tipo-removido' }));
+        const [vinculo] = await repository.createMany(ana.id, [cpf.id]);
+
+        await dataSource.getRepository(DocumentType).softDelete({ id: cpf.id });
+
+        const pagina = await repository.findPending({ page: 1, limit: 20 });
+
+        expect(pagina.items.map((item) => item.id)).not.toContain(vinculo.id);
+      });
+    });
   });
 });
