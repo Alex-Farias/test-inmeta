@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 
+import { EmployeeDocumentsService } from '../employee-documents/employee-documents.service';
 import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
 import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
+import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { Employee } from './domain/employee.entity';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -16,7 +18,14 @@ export interface ListaPaginadaDeColaboradores {
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly repository: EmployeesRepository) {}
+  constructor(
+    private readonly repository: EmployeesRepository,
+    private readonly transactionRunner: TransactionRunner,
+    // Ciclo deliberado com `employee-documents` — ver a nota em
+    // `employees.module.ts`.
+    @Inject(forwardRef(() => EmployeeDocumentsService))
+    private readonly employeeDocumentsService: EmployeeDocumentsService,
+  ) {}
 
   /**
    * Checagem em codigo, nao captura de `23505` (REQ-01.3): o cadastro e
@@ -77,11 +86,23 @@ export class EmployeesService {
    *
    * Reaproveita `findById` para o not-found (REQ-12.6): colaborador ja
    * removido ou inexistente lanca `EntityNotFoundError` antes de qualquer
-   * escrita. Linha unica, sem invariante entre registros nesta task — a
-   * propagacao aos vinculos (D-04, operacao critica) so nasce em TASK-032.
+   * escrita — fora da transacao, porque e leitura e nao ha o que desfazer.
+   *
+   * Operacao critica (D-04.3, REQ-12.4): marcar o colaborador e propagar aos
+   * vinculos sao duas escritas com invariante entre elas — nao pode sobrar
+   * vinculo ativo de colaborador removido. Dai as duas correrem sob o mesmo
+   * `manager` do `TransactionRunner` (D-05).
+   *
+   * Quem escreve em `employee_documents` e o modulo dono, via service publico
+   * (D-10): este metodo nao conhece o repositorio de vinculos, so passa a
+   * transacao adiante.
    */
   async softDelete(id: string): Promise<void> {
     const colaborador = await this.findById(id);
-    await this.repository.softDelete(colaborador.id);
+
+    await this.transactionRunner.run(async (manager) => {
+      await this.repository.softDelete(colaborador.id, manager);
+      await this.employeeDocumentsService.removerVinculosDoColaborador(colaborador.id, manager);
+    });
   }
 }

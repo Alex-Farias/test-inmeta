@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import type { EntityManager } from 'typeorm';
 
 import { DocumentTypesService } from '../document-types/document-types.service';
@@ -14,6 +14,8 @@ export class EmployeeDocumentsService {
   constructor(
     private readonly repository: EmployeeDocumentsRepository,
     private readonly transactionRunner: TransactionRunner,
+    // Ciclo deliberado com `employees` — ver a nota em `employees.module.ts`.
+    @Inject(forwardRef(() => EmployeesService))
     private readonly employeesService: EmployeesService,
     private readonly documentTypesService: DocumentTypesService,
   ) {}

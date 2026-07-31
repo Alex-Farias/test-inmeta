@@ -1,5 +1,5 @@
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 import { CreateEmployees1785416355470 } from '../../database/migrations/1785416355470-CreateEmployees';
 import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785446317559-CreateDocumentTypes';
@@ -43,8 +43,20 @@ describe('EmployeeDocumentsService (integration)', () => {
 
     const repository = new EmployeeDocumentsRepository(dataSource);
     const transactionRunner = new TransactionRunner(dataSource);
-    const employeesService = new EmployeesService(new EmployeesRepository(dataSource));
     const documentTypesService = new DocumentTypesService(new DocumentTypesRepository(dataSource));
+
+    // O ciclo entre os dois services e resolvido aqui do mesmo modo que o
+    // `forwardRef` resolve em producao: a referencia so e lida no momento da
+    // chamada, quando ambos ja foram construidos.
+    const employeesService = new EmployeesService(
+      new EmployeesRepository(dataSource),
+      transactionRunner,
+      {
+        removerVinculosDoColaborador: (employeeId: string, manager?: EntityManager) =>
+          service.removerVinculosDoColaborador(employeeId, manager),
+      } as unknown as EmployeeDocumentsService,
+    );
+
     service = new EmployeeDocumentsService(
       repository,
       transactionRunner,

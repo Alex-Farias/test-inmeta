@@ -1,14 +1,22 @@
+import type { EntityManager } from 'typeorm';
+
+import { EmployeeDocumentsService } from '../employee-documents/employee-documents.service';
 import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
+import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { Employee } from './domain/employee.entity';
 import { EmployeesRepository } from './employees.repository';
 import { EmployeesService } from './employees.service';
 
 describe('EmployeesService', () => {
+  /** Identidade que prova que as duas escritas correram sob a mesma transacao. */
+  const manager = { id: 'manager-da-transacao' } as unknown as EntityManager;
+
   let create: jest.Mock;
   let findActiveByEmail: jest.Mock;
   let findActiveById: jest.Mock;
   let save: jest.Mock;
   let softDelete: jest.Mock;
+  let removerVinculosDoColaborador: jest.Mock;
   let service: EmployeesService;
 
   beforeEach(() => {
@@ -17,6 +25,7 @@ describe('EmployeesService', () => {
     findActiveById = jest.fn();
     save = jest.fn();
     softDelete = jest.fn();
+    removerVinculosDoColaborador = jest.fn();
     const repository = {
       create,
       findActiveByEmail,
@@ -24,8 +33,14 @@ describe('EmployeesService', () => {
       save,
       softDelete,
     } as unknown as EmployeesRepository;
+    const transactionRunner = {
+      run: (work: (manager: EntityManager) => Promise<unknown>) => work(manager),
+    } as unknown as TransactionRunner;
+    const employeeDocumentsService = {
+      removerVinculosDoColaborador,
+    } as unknown as EmployeeDocumentsService;
 
-    service = new EmployeesService(repository);
+    service = new EmployeesService(repository, transactionRunner, employeeDocumentsService);
   });
 
   it('rejeita e-mail ja usado por colaborador ativo', async () => {
@@ -84,13 +99,16 @@ describe('EmployeesService', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('remove colaborador ativo', async () => {
+  it('remove colaborador ativo propagando aos vinculos na mesma transacao', async () => {
     const existente = { id: 'ativo', name: 'Ana', email: 'ana@example.com' } as Employee;
     findActiveById.mockResolvedValue(existente);
 
     await service.softDelete('ativo');
 
-    expect(softDelete).toHaveBeenCalledWith('ativo');
+    // O mesmo `manager` nas duas chamadas e o que prova a atomicidade de
+    // REQ-12.4 nesta camada — o rollback em si e coberto na integracao.
+    expect(softDelete).toHaveBeenCalledWith('ativo', manager);
+    expect(removerVinculosDoColaborador).toHaveBeenCalledWith('ativo', manager);
   });
 
   it('responde nao encontrado ao remover colaborador ja removido ou inexistente', async () => {
@@ -99,5 +117,6 @@ describe('EmployeesService', () => {
     await expect(service.softDelete('inexistente')).rejects.toThrow(EntityNotFoundError);
 
     expect(softDelete).not.toHaveBeenCalled();
+    expect(removerVinculosDoColaborador).not.toHaveBeenCalled();
   });
 });
