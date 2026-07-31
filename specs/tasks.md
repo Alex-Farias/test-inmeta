@@ -498,14 +498,19 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     subindo a aplicação, não só pelos testes: os specs constroem os services à mão e não
     exercitam o container do Nest.
 
-- [ ] **TASK-033** · P0 · `employee-documents` · adiciona remocao em lote de vinculos por tipo
+- [x] **TASK-033** · P0 · `employee-documents` · adiciona remocao em lote de vinculos por tipo
   - Requisitos: REQ-13.2, REQ-13.3
   - Depende de: TASK-030
   - Aceite: marca como removidos os vínculos ativos do tipo, gravando
     `deletion_cause = 'TYPE_REMOVED'`, aceitando `EntityManager` externo
   - Teste: `employee-documents.repository.integration.spec.ts` → "grava causa TYPE_REMOVED
-    na cascata"
-  - Commit: `feat(employee-documents)`
+    na cascata"; adicionado também "preserva a causa de vínculo já desvinculado manualmente",
+    espelhando o equivalente da TASK-031 — prova a parte **"ativos"** do Aceite
+  - Commit: `feat(employee-documents)` · `9d8ede7`
+  - **Refatoração confirmada com o humano**, embora encoste em código da TASK-031: o corpo
+    comum das duas cascatas saiu para `softDeleteAllByParent` privado. O ganho não é reduzir
+    repetição — são duas linhas — e sim manter o `deletedAt: IsNull()` em um ponto só, que é
+    a guarda que um terceiro gatilho perderia ao copiar um dos métodos públicos sem revisar.
 
 - [ ] **TASK-034** · P0 · `document-types` · propaga remocao de tipo aos vinculos
   - Requisitos: REQ-13.4, REQ-15.1
