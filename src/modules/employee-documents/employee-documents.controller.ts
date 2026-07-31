@@ -10,9 +10,9 @@ import {
   Query,
 } from '@nestjs/common';
 
-import { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { CreateEmployeeDocumentsDto } from './dto/create-employee-documents.dto';
+import { PendingQueryDto } from './dto/pending-query.dto';
 import { EmployeeDocumentsService, ListaPaginadaDePendentes } from './employee-documents.service';
 
 @Controller('employee-documents')
@@ -25,8 +25,8 @@ export class EmployeeDocumentsController {
   }
 
   @Get('pending')
-  listarPendentes(@Query() pagination: PaginationQueryDto): Promise<ListaPaginadaDePendentes> {
-    return this.service.listarPendentes(pagination);
+  listarPendentes(@Query() query: PendingQueryDto): Promise<ListaPaginadaDePendentes> {
+    return this.service.listarPendentes(query);
   }
 
   @Delete(':id')

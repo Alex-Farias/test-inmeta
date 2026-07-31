@@ -4,10 +4,10 @@ import type { EntityManager } from 'typeorm';
 import { DocumentTypesService } from '../document-types/document-types.service';
 import { EmployeesService } from '../employees/employees.service';
 import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
-import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { CreateEmployeeDocumentsDto } from './dto/create-employee-documents.dto';
+import { PendingQueryDto } from './dto/pending-query.dto';
 import { EmployeeDocumentsRepository, VinculoPendente } from './employee-documents.repository';
 
 export interface ListaPaginadaDePendentes {
@@ -101,11 +101,19 @@ export class EmployeeDocumentsService {
   }
 
   /**
-   * REQ-10.1, REQ-10.5, REQ-10.6: pendencia derivada (D-03), sem filtro ainda
-   * — colaborador/tipo entram na TASK-049.
+   * REQ-10.1, REQ-10.5, REQ-10.6: pendencia derivada (D-03). Filtros por
+   * colaborador/tipo (REQ-10.2–10.4) repassados direto ao repositorio, sem
+   * validar existencia via `EmployeesService`/`DocumentTypesService`: ao
+   * contrario de `vincular`, um filtro para registro removido ou inexistente
+   * deve devolver lista vazia, nao erro (REQ-10.7) — validar aqui lancaria
+   * `EntityNotFoundError` exatamente no caso que o requisito manda tratar em
+   * silencio.
    */
-  async listarPendentes(pagination: PaginationQueryDto): Promise<ListaPaginadaDePendentes> {
-    const { items, total } = await this.repository.findPending(pagination);
-    return { items, total, page: pagination.page, limit: pagination.limit };
+  async listarPendentes(query: PendingQueryDto): Promise<ListaPaginadaDePendentes> {
+    const { items, total } = await this.repository.findPending(
+      { page: query.page, limit: query.limit },
+      { employeeId: query.employeeId, documentTypeId: query.documentTypeId },
+    );
+    return { items, total, page: query.page, limit: query.limit };
   }
 }

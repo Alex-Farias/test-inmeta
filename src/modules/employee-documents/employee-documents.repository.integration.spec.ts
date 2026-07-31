@@ -284,5 +284,67 @@ describe('EmployeeDocumentsRepository (integration)', () => {
       expect(item?.employee).toEqual({ id: ana.id, name: 'Ana' });
       expect(item?.documentType).toEqual({ id: semHistorico.id, name: 'CPF' });
     });
+
+    /**
+     * Uma unica descricao no `tasks.md` ("aplica filtros cumulativamente"), mas
+     * REQ-10.2 e REQ-10.3 pedem que cada filtro funcione tambem isolado — um
+     * teste so com os dois juntos passaria igual se um dos dois filtros
+     * estivesse quebrado. Tres `it()`, mesmo padrao de expansao das TASK-028/030.
+     */
+    describe('filtros', () => {
+      async function montarCenario() {
+        const employees = dataSource.getRepository(Employee);
+        const documentTypes = dataSource.getRepository(DocumentType);
+
+        const ana = await employees.save(
+          employees.create({ name: 'Ana', email: 'ana-filtro@example.com' }),
+        );
+        const bruno = await employees.save(
+          employees.create({ name: 'Bruno', email: 'bruno-filtro@example.com' }),
+        );
+        const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+        const rg = await documentTypes.save(documentTypes.create({ name: 'RG' }));
+
+        const [anaCpf] = await repository.createMany(ana.id, [cpf.id]);
+        const [anaRg] = await repository.createMany(ana.id, [rg.id]);
+        const [brunoCpf] = await repository.createMany(bruno.id, [cpf.id]);
+        const [brunoRg] = await repository.createMany(bruno.id, [rg.id]);
+
+        return { ana, bruno, cpf, rg, anaCpf, anaRg, brunoCpf, brunoRg };
+      }
+
+      it('filtra por colaborador', async () => {
+        const { ana, anaCpf, anaRg } = await montarCenario();
+
+        const pagina = await repository.findPending({ page: 1, limit: 20 }, { employeeId: ana.id });
+
+        expect(pagina.total).toBe(2);
+        expect(pagina.items.map((item) => item.id).sort()).toEqual([anaCpf.id, anaRg.id].sort());
+      });
+
+      it('filtra por tipo', async () => {
+        const { cpf, anaCpf, brunoCpf } = await montarCenario();
+
+        const pagina = await repository.findPending(
+          { page: 1, limit: 20 },
+          { documentTypeId: cpf.id },
+        );
+
+        expect(pagina.total).toBe(2);
+        expect(pagina.items.map((item) => item.id).sort()).toEqual([anaCpf.id, brunoCpf.id].sort());
+      });
+
+      it('aplica filtros cumulativamente', async () => {
+        const { ana, cpf, anaCpf } = await montarCenario();
+
+        const pagina = await repository.findPending(
+          { page: 1, limit: 20 },
+          { employeeId: ana.id, documentTypeId: cpf.id },
+        );
+
+        expect(pagina.total).toBe(1);
+        expect(pagina.items.map((item) => item.id)).toEqual([anaCpf.id]);
+      });
+    });
   });
 });

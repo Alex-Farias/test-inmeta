@@ -24,6 +24,11 @@ interface LinhaDePendente {
   tipo_name: string;
 }
 
+export interface FiltroDePendentes {
+  employeeId?: string;
+  documentTypeId?: string;
+}
+
 @Injectable()
 export class EmployeeDocumentsRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
@@ -167,9 +172,17 @@ export class EmployeeDocumentsRepository {
    *
    * Ordena por `created_at` com desempate por `id` (D-15), mesma convencao de
    * `EmployeesRepository.findAllActive`.
+   *
+   * `filtro.employeeId`/`filtro.documentTypeId` (REQ-10.2, REQ-10.3), cumulativos
+   * quando os dois vem informados (REQ-10.4). Um filtro que referencia
+   * colaborador/tipo removido ou inexistente nao precisa de tratamento a parte
+   * (REQ-10.7): o `WHERE` simplesmente nao casa nenhuma linha, e se o vinculo
+   * nao tivesse sido marcado pela cascata o `innerJoin` ja o excluiria — mesma
+   * defesa em profundidade de D-06 usada em `findSubmittableById`.
    */
   async findPending(
     pagination: PaginationQueryDto,
+    filtro: FiltroDePendentes = {},
     manager?: EntityManager,
   ): Promise<PaginaDePendentes> {
     const base = this.repo(manager)
@@ -192,6 +205,15 @@ export class EmployeeDocumentsRepository {
             AND s.deleted_at IS NULL
         )`,
       );
+
+    if (filtro.employeeId) {
+      base.andWhere('vinculo.employee_id = :employeeId', { employeeId: filtro.employeeId });
+    }
+    if (filtro.documentTypeId) {
+      base.andWhere('vinculo.document_type_id = :documentTypeId', {
+        documentTypeId: filtro.documentTypeId,
+      });
+    }
 
     const total = await base.clone().getCount();
 
