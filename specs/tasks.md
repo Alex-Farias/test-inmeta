@@ -481,13 +481,22 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     cascata. Sem migration: a coluna é `varchar(20)` sem `CHECK` de enum. D-12 atualizada no
     mesmo commit.
 
-- [ ] **TASK-032** · P0 · `employees` · propaga remocao de colaborador aos vinculos
+- [x] **TASK-032** · P0 · `employees` · propaga remocao de colaborador aos vinculos
   - Requisitos: REQ-12.3, REQ-12.4, REQ-15.1
   - Depende de: TASK-031, TASK-017
   - Aceite: "QUANDO um colaborador é removido, o sistema DEVE marcá-lo e propagar a remoção
     aos seus vínculos de forma atômica"
-  - Teste: `employees.integration.spec.ts` → "remove colaborador e vínculos na mesma transação"
-  - Commit: `feat(employees)`
+  - Teste: `employees.integration.spec.ts` → "remove colaborador e vínculos na mesma transação";
+    adicionado também "desfaz a remoção do colaborador se a propagação falhar" — o primeiro
+    prova a propagação, mas passaria igual sem transação nenhuma; só o segundo prova a parte
+    **atômica** do Aceite. `employees.service.spec.ts` → "remove colaborador ativo propagando
+    aos vinculos na mesma transacao" cobre o mesmo na unidade, pela identidade do `manager`
+  - Commit: `feat(employees)` · `fa0aca0`
+  - **`forwardRef` nos dois módulos.** `employee-documents` já importava `employees` desde a
+    TASK-026; a propagação fecha o ciclo. Os dois lados passam a usar `forwardRef` — nenhum
+    alcança repositório alheio, que é o que D-10 de fato proíbe. O grafo de DI foi verificado
+    subindo a aplicação, não só pelos testes: os specs constroem os services à mão e não
+    exercitam o container do Nest.
 
 - [ ] **TASK-033** · P0 · `employee-documents` · adiciona remocao em lote de vinculos por tipo
   - Requisitos: REQ-13.2, REQ-13.3
