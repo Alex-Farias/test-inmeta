@@ -608,9 +608,17 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Depende de: TASK-038
   - Aceite: duas requisições de primeiro envio disparadas simultaneamente para o mesmo vínculo
     — exatamente uma submission persiste com `version = 1` e `is_active = true`; a perdedora
-    recebe `ConcurrentSubmissionError` (409), não 500 cru. Usa **barreira explícita de
-    transação** (sincronização manual do ponto de overlap), não `Promise.all` ingênuo — ver
-    `design.md` §5
+    recebe `ConcurrentSubmissionError` **ou** `VersionConflictError` (409 em ambos), não 500
+    cru. Usa **barreira explícita de transação** (sincronização manual do ponto de overlap),
+    não `Promise.all` ingênuo — ver `design.md` §5
+  - **Aceite corrigido depois da TASK-041.** A redação original exigia um único tipo de erro
+    para a transação perdedora. Com `VersionConflictError` passando a existir, ficou visível
+    que esta corrida viola as **duas** constraints na mesma tentativa de escrita — as duas
+    inserções propõem `version = 1` sobre um vínculo sem envio nenhum — e qual delas o
+    Postgres reporta é ordem de checagem interna, não contrato: instável entre versões do
+    servidor e sob recriação de índice. O aceite passou a admitir os dois. Não é afrouxamento:
+    as asserções que provam REQ-07.3 — exatamente uma linha, `version = 1`, ativa — seguem
+    exatas. Ver `design.md` §5, "O limite da discriminação de D-14"
   - Teste: `submissions.concurrency.integration.spec.ts` → "persiste exatamente um de dois
     primeiros envios simultâneos"
   - Commit: `test(submissions)` · `bd89a15`

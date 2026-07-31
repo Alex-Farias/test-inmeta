@@ -6,7 +6,7 @@ import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785
 import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/1785453770311-CreateEmployeeDocuments';
 import { CreateDocumentSubmissions1785470132175 } from '../../database/migrations/1785470132175-CreateDocumentSubmissions';
 import { criarBarreira, sincronizarEm } from '../../../test/helpers/concurrent-transactions';
-import { ConcurrentSubmissionError } from '../../shared/errors';
+import { ConcurrentSubmissionError, VersionConflictError } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { DocumentType } from '../document-types/domain/document-type.entity';
 import { Employee } from '../employees/domain/employee.entity';
@@ -113,8 +113,28 @@ describe('Submissions — concorrência (integration)', () => {
 
       // 409, nao 500 cru: e a traducao de 23505 que a TASK-038 introduziu, aqui
       // provada contra o Postgres real em vez de erro fabricado por mock.
+      //
+      // **Qualquer um dos dois**, e nao um tipo fixo. Nesta corrida as duas
+      // insercoes propoem `version = 1` e `is_active = true` sobre um vinculo
+      // sem envio nenhum, entao a perdedora viola `uq_submission_active` **e**
+      // `uq_submission_version` na mesma tentativa de escrita. Qual delas o
+      // Postgres reporta e ordem de checagem interna: nao e contrato
+      // documentado, nao e estavel entre versoes do servidor, e nao e estavel
+      // nem sob recriacao dos indices, que muda os OIDs pelos quais eles sao
+      // varridos. Assertar um tipo so acoplaria a suite a esse detalhe, e o
+      // teste passaria a quebrar por atualizacao de Postgres em vez de por
+      // regressao nossa.
+      //
+      // Nao e falha na taxonomia de D-14: as duas classes estao ambas certas
+      // aqui, porque as duas invariantes foram ambas violadas. Ver design.md,
+      // secao 5, "O limite da discriminacao de D-14" — este e o unico ponto do
+      // sistema onde a discriminacao nao e deterministica. No reenvio ela e
+      // exata, porque ja existe linha ativa e a perdedora colide em
+      // `uq_submission_active` sem chance de propor versao repetida.
       const [rejeitada] = rejeitadas;
-      expect(rejeitada.reason).toBeInstanceOf(ConcurrentSubmissionError);
+      expect([ConcurrentSubmissionError, VersionConflictError]).toContain(
+        (rejeitada.reason as Error).constructor,
+      );
 
       // REQ-07.3, "EM QUALQUER MOMENTO": uma linha so, e sem versao orfa
       // deixada pela perdedora.
