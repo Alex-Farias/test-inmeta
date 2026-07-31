@@ -1,3 +1,6 @@
+import { DocumentTypesService } from '../document-types/document-types.service';
+import { EmployeesService } from '../employees/employees.service';
+import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { EmployeeDocumentsRepository } from './employee-documents.repository';
@@ -5,17 +8,37 @@ import { EmployeeDocumentsService } from './employee-documents.service';
 
 describe('EmployeeDocumentsService', () => {
   let createMany: jest.Mock;
+  let findActiveDocumentTypeIds: jest.Mock;
   let run: jest.Mock;
+  let employeesFindById: jest.Mock;
+  let documentTypesFindById: jest.Mock;
   let service: EmployeeDocumentsService;
 
   beforeEach(() => {
     createMany = jest.fn();
-    const repository = { createMany } as unknown as EmployeeDocumentsRepository;
+    findActiveDocumentTypeIds = jest.fn().mockResolvedValue([]);
+    const repository = {
+      createMany,
+      findActiveDocumentTypeIds,
+    } as unknown as EmployeeDocumentsRepository;
 
     run = jest.fn((work: (manager: undefined) => Promise<unknown>) => work(undefined));
     const transactionRunner = { run } as unknown as TransactionRunner;
 
-    service = new EmployeeDocumentsService(repository, transactionRunner);
+    employeesFindById = jest.fn().mockResolvedValue({ id: 'colaborador-1' });
+    const employeesService = { findById: employeesFindById } as unknown as EmployeesService;
+
+    documentTypesFindById = jest.fn().mockResolvedValue({ id: 'tipo-a' });
+    const documentTypesService = {
+      findById: documentTypesFindById,
+    } as unknown as DocumentTypesService;
+
+    service = new EmployeeDocumentsService(
+      repository,
+      transactionRunner,
+      employeesService,
+      documentTypesService,
+    );
   });
 
   it('cria um vínculo por tipo informado', async () => {
@@ -33,5 +56,41 @@ describe('EmployeeDocumentsService', () => {
     expect(resultado).toBe(vinculos);
     expect(createMany).toHaveBeenCalledWith('colaborador-1', ['tipo-a', 'tipo-b'], undefined);
     expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejeita lote inteiro com tipo removido', async () => {
+    documentTypesFindById.mockRejectedValue(
+      new EntityNotFoundError('Tipo de documento nao encontrado.'),
+    );
+
+    await expect(
+      service.vincular({ employeeId: 'colaborador-1', documentTypeIds: ['tipo-a', 'removido'] }),
+    ).rejects.toThrow(EntityNotFoundError);
+
+    expect(createMany).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('rejeita lote inteiro com colaborador removido ou inexistente', async () => {
+    employeesFindById.mockRejectedValue(new EntityNotFoundError('Colaborador nao encontrado.'));
+
+    await expect(
+      service.vincular({ employeeId: 'removido', documentTypeIds: ['tipo-a'] }),
+    ).rejects.toThrow(EntityNotFoundError);
+
+    expect(documentTypesFindById).not.toHaveBeenCalled();
+    expect(createMany).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('rejeita lote com vínculo ativo duplicado', async () => {
+    findActiveDocumentTypeIds.mockResolvedValue(['tipo-a']);
+
+    await expect(
+      service.vincular({ employeeId: 'colaborador-1', documentTypeIds: ['tipo-a', 'tipo-b'] }),
+    ).rejects.toThrow(DuplicatedResourceError);
+
+    expect(createMany).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
   });
 });

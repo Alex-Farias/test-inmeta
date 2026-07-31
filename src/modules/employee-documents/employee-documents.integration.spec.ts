@@ -6,7 +6,11 @@ import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785
 import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/1785453770311-CreateEmployeeDocuments';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { DocumentType } from '../document-types/domain/document-type.entity';
+import { DocumentTypesRepository } from '../document-types/document-types.repository';
+import { DocumentTypesService } from '../document-types/document-types.service';
 import { Employee } from '../employees/domain/employee.entity';
+import { EmployeesRepository } from '../employees/employees.repository';
+import { EmployeesService } from '../employees/employees.service';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { EmployeeDocumentsRepository } from './employee-documents.repository';
 import { EmployeeDocumentsService } from './employee-documents.service';
@@ -39,7 +43,14 @@ describe('EmployeeDocumentsService (integration)', () => {
 
     const repository = new EmployeeDocumentsRepository(dataSource);
     const transactionRunner = new TransactionRunner(dataSource);
-    service = new EmployeeDocumentsService(repository, transactionRunner);
+    const employeesService = new EmployeesService(new EmployeesRepository(dataSource));
+    const documentTypesService = new DocumentTypesService(new DocumentTypesRepository(dataSource));
+    service = new EmployeeDocumentsService(
+      repository,
+      transactionRunner,
+      employeesService,
+      documentTypesService,
+    );
   }, 120_000);
 
   afterAll(async () => {
@@ -60,10 +71,11 @@ describe('EmployeeDocumentsService (integration)', () => {
         .getRepository(DocumentType)
         .save(dataSource.getRepository(DocumentType).create({ name: 'CPF' }));
 
-      // O mesmo tipo duas vezes no lote faz a segunda insercao violar
-      // uq_employee_document_active a meio da transacao (D-05) — e exatamente
-      // o cenario que prova REQ-15.2/15.3 sem depender da validacao de
-      // duplicidade ainda nao implementada (TASK-028).
+      // O mesmo tipo duas vezes no lote passa pela validacao de duplicidade
+      // (TASK-028 so rejeita vinculo ja ativo em employee_documents, nao
+      // repeticao dentro do proprio payload) e faz a segunda insercao violar
+      // uq_employee_document_active a meio da transacao (D-05) — prova
+      // REQ-15.2/15.3.
       await expect(
         service.vincular({
           employeeId: employee.id,

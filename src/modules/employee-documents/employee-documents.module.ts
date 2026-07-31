@@ -1,15 +1,21 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { DocumentTypesModule } from '../document-types/document-types.module';
+import { EmployeesModule } from '../employees/employees.module';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { EmployeeDocumentsController } from './employee-documents.controller';
 import { EmployeeDocumentsRepository } from './employee-documents.repository';
 import { EmployeeDocumentsService } from './employee-documents.service';
 
-/** So o service sai nos `exports` — repositorio nao vaza entre modulos (D-10). */
+/**
+ * Importa `EmployeesModule`/`DocumentTypesModule` para consumir os services
+ * publicos deles (REQ-03.3/03.4, D-10) — nunca o repositorio. So o proprio
+ * service sai nos `exports` — repositorio nao vaza entre modulos.
+ */
 @Module({
-  imports: [TypeOrmModule.forFeature([EmployeeDocument])],
+  imports: [TypeOrmModule.forFeature([EmployeeDocument]), EmployeesModule, DocumentTypesModule],
   controllers: [EmployeeDocumentsController],
   providers: [EmployeeDocumentsService, EmployeeDocumentsRepository, TransactionRunner],
   exports: [EmployeeDocumentsService],
