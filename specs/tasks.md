@@ -598,6 +598,10 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     receberia 500 cru no intervalo entre as duas tasks. Ver a nota na TASK-041.
   - REQ-06.2 é satisfeito **por construção** — sob D-03 "entregue" é derivado da existência de
     submission ativa, e não há escrita no vínculo que pudesse divergir.
+  - **Ressalva do aceite.** Neste commit o reenvio para o mesmo vínculo ainda **não** é
+    suportado: retorna 409 por violar `uq_submission_active`, porque nada desativa o envio
+    anterior. REQ-07 inteiro é fechado pela TASK-040, não por esta. Sem a ressalva, o commit
+    isolado se lê como se envio e reenvio já estivessem completos aqui.
 
 - [x] **TASK-039** · P0 · `submissions` · prova concorrencia no primeiro envio via indice parcial
   - Requisitos: REQ-07.3, REQ-07.5

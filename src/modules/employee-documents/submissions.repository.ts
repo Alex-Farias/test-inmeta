@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 
 import { DocumentSubmission } from './domain/document-submission.entity';
 
@@ -35,6 +35,26 @@ export class SubmissionsRepository {
 
     // `MAX` sobre integer volta como string no driver do Postgres.
     return Number(resultado?.proxima ?? 1);
+  }
+
+  /**
+   * Desativa o envio ativo do vinculo, se houver. O predicado e **o mesmo** de
+   * `uq_submission_active` de proposito: o que o indice considera ativo e o que
+   * esta desativacao alcanca precisam ser a mesma coisa, senao o reenvio
+   * tentaria inserir sobre uma linha que ele acredita ter desativado.
+   *
+   * `deleted_at IS NULL` explicito porque `update()` nao recebe o filtro
+   * automatico do `@DeleteDateColumn` (D-06) — mesma licao das cascatas de
+   * remocao em `employee-documents.repository.ts`.
+   *
+   * Afeta zero linhas quando nao ha envio ativo, e e o que dispensa um branch
+   * para o primeiro envio: ele e o caso degenerado do reenvio.
+   */
+  async deactivateActive(employeeDocumentId: string, manager?: EntityManager): Promise<void> {
+    await this.repo(manager).update(
+      { employeeDocumentId, isActive: true, deletedAt: IsNull() },
+      { isActive: false },
+    );
   }
 
   create(

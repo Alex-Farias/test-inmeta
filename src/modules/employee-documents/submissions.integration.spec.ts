@@ -5,8 +5,6 @@ import { CreateEmployees1785416355470 } from '../../database/migrations/17854163
 import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785446317559-CreateDocumentTypes';
 import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/1785453770311-CreateEmployeeDocuments';
 import { CreateDocumentSubmissions1785470132175 } from '../../database/migrations/1785470132175-CreateDocumentSubmissions';
-import { criarBarreira, sincronizarEm } from '../../../test/helpers/concurrent-transactions';
-import { ConcurrentSubmissionError } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { DocumentType } from '../document-types/domain/document-type.entity';
 import { Employee } from '../employees/domain/employee.entity';
@@ -16,13 +14,7 @@ import { EmployeeDocumentsRepository } from './employee-documents.repository';
 import { SubmissionsRepository } from './submissions.repository';
 import { SubmissionsService } from './submissions.service';
 
-/**
- * Concorrencia no **primeiro** envio: duas insercoes disputando uma linha que
- * ainda nao existe. A corrida de **reenvio** — duas transacoes disputando
- * desativar a linha existente e inserir a proxima — e a TASK-042, e mora neste
- * mesmo arquivo. Mesma constraint, dois caminhos de codigo distintos.
- */
-describe('Submissions — concorrência (integration)', () => {
+describe('SubmissionsService (integration)', () => {
   let container: StartedPostgreSqlContainer;
   let dataSource: DataSource;
   let service: SubmissionsService;
@@ -84,44 +76,55 @@ describe('Submissions — concorrência (integration)', () => {
     );
   });
 
-  describe('primeiro envio', () => {
-    it('persiste exatamente um de dois primeiros envios simultâneos', async () => {
+  describe('reenvio', () => {
+    it('desativa o envio anterior e registra o próximo como ativo', async () => {
       const vinculo = await criarVinculo('CPF');
 
-      // A barreira em `findNextVersion` prende as duas chamadas depois de a
-      // transacao abrir e antes da insercao disputada. Sem ela, `Promise.all`
-      // deixa a primeira commitar antes de a segunda comecar, e o teste passa
-      // sem que sobreposicao alguma tenha ocorrido — ver design.md, secao 5.
-      const barreira = criarBarreira(2);
-      const restaurar = sincronizarEm(repository, 'findNextVersion', barreira);
+      const primeiro = await service.enviar(vinculo.id);
+      const segundo = await service.enviar(vinculo.id);
 
-      let resultados: PromiseSettledResult<unknown>[];
-      try {
-        resultados = await Promise.allSettled([
-          service.enviar(vinculo.id),
-          service.enviar(vinculo.id),
-        ]);
-      } finally {
-        restaurar();
+      expect(primeiro.version).toBe(1);
+      expect(segundo.version).toBe(2);
+
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      expect((await submissions.findOneBy({ id: primeiro.id }))?.isActive).toBe(false);
+      expect((await submissions.findOneBy({ id: segundo.id }))?.isActive).toBe(true);
+
+      // REQ-07.2: a versao anterior continua no banco, apenas inativa.
+      expect(await submissions.count()).toBe(2);
+    });
+
+    it('mantém a sequência de versões contígua ao longo de vários reenvios', async () => {
+      const vinculo = await criarVinculo('RG');
+
+      for (let esperada = 1; esperada <= 4; esperada += 1) {
+        const enviado = await service.enviar(vinculo.id);
+        expect(enviado.version).toBe(esperada);
       }
 
-      const cumpridas = resultados.filter((resultado) => resultado.status === 'fulfilled');
-      const rejeitadas = resultados.filter((resultado) => resultado.status === 'rejected');
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      const ativas = await submissions.findBy({ isActive: true });
+      expect(ativas).toHaveLength(1);
+      expect(ativas[0].version).toBe(4);
+    });
 
-      expect(cumpridas).toHaveLength(1);
-      expect(rejeitadas).toHaveLength(1);
+    it('desfaz a desativação do anterior se a inserção falhar', async () => {
+      const vinculo = await criarVinculo('ASO');
+      const primeiro = await service.enviar(vinculo.id);
 
-      // 409, nao 500 cru: e a traducao de 23505 que a TASK-038 introduziu, aqui
-      // provada contra o Postgres real em vez de erro fabricado por mock.
-      const [rejeitada] = rejeitadas;
-      expect(rejeitada.reason).toBeInstanceOf(ConcurrentSubmissionError);
+      // E aqui que a transacao se paga: sem ela a desativacao ja teria
+      // commitado, e o vinculo ficaria sem envio ativo nenhum. O indice
+      // impede dois ativos; so a transacao impede zero (REQ-07.6).
+      const falha = jest
+        .spyOn(repository, 'create')
+        .mockRejectedValueOnce(new Error('falha na insercao'));
 
-      // REQ-07.3, "EM QUALQUER MOMENTO": uma linha so, e sem versao orfa
-      // deixada pela perdedora.
-      const linhas = await dataSource.getRepository(DocumentSubmission).find({ withDeleted: true });
-      expect(linhas).toHaveLength(1);
-      expect(linhas[0].version).toBe(1);
-      expect(linhas[0].isActive).toBe(true);
+      await expect(service.enviar(vinculo.id)).rejects.toThrow('falha na insercao');
+      falha.mockRestore();
+
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      expect((await submissions.findOneBy({ id: primeiro.id }))?.isActive).toBe(true);
+      expect(await submissions.count()).toBe(1);
     });
   });
 });

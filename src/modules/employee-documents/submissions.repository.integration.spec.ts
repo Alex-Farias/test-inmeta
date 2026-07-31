@@ -165,6 +165,41 @@ describe('DocumentSubmission (integration)', () => {
     });
   });
 
+  describe('deactivateActive', () => {
+    it('desativa o envio ativo do vínculo', async () => {
+      const vinculo = await criarVinculo('CNH');
+      const criado = await repository.create(vinculo.id, 1);
+
+      await repository.deactivateActive(vinculo.id);
+
+      const linha = await dataSource.getRepository(DocumentSubmission).findOneBy({ id: criado.id });
+      expect(linha?.isActive).toBe(false);
+
+      // Desativar nao remove: o historico de REQ-07.2 vive nestas linhas.
+      expect(linha?.deletedAt).toBeNull();
+    });
+
+    it('não alcança envio de outro vínculo', async () => {
+      const alvo = await criarVinculo('TITULO');
+      const outro = await criarVinculo('RESERVISTA');
+      const doAlvo = await repository.create(alvo.id, 1);
+      const doOutro = await repository.create(outro.id, 1);
+
+      await repository.deactivateActive(alvo.id);
+
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      expect((await submissions.findOneBy({ id: doAlvo.id }))?.isActive).toBe(false);
+      expect((await submissions.findOneBy({ id: doOutro.id }))?.isActive).toBe(true);
+    });
+
+    it('não falha quando o vínculo não tem envio ativo', async () => {
+      const vinculo = await criarVinculo('DIPLOMA');
+
+      // Zero linhas afetadas — e o que dispensa branch para o primeiro envio.
+      await expect(repository.deactivateActive(vinculo.id)).resolves.toBeUndefined();
+    });
+  });
+
   describe('create', () => {
     it('registra o envio como ativo no instante da entrega', async () => {
       const vinculo = await criarVinculo('PIS');
