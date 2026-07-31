@@ -11,6 +11,7 @@ describe('EmployeeDocumentsService', () => {
   let findActiveDocumentTypeIds: jest.Mock;
   let findActiveById: jest.Mock;
   let softDelete: jest.Mock;
+  let findPending: jest.Mock;
   let run: jest.Mock;
   let employeesFindById: jest.Mock;
   let documentTypesFindById: jest.Mock;
@@ -21,11 +22,13 @@ describe('EmployeeDocumentsService', () => {
     findActiveDocumentTypeIds = jest.fn().mockResolvedValue([]);
     findActiveById = jest.fn();
     softDelete = jest.fn();
+    findPending = jest.fn().mockResolvedValue({ items: [], total: 0 });
     const repository = {
       createMany,
       findActiveDocumentTypeIds,
       findActiveById,
       softDelete,
+      findPending,
     } as unknown as EmployeeDocumentsRepository;
 
     run = jest.fn((work: (manager: undefined) => Promise<unknown>) => work(undefined));
@@ -114,5 +117,31 @@ describe('EmployeeDocumentsService', () => {
     await service.desvincular('vinculo-1');
 
     expect(softDelete).toHaveBeenCalledWith('vinculo-1', 'MANUAL');
+  });
+
+  /**
+   * REQ-10.7. Prova que o service repassa o filtro direto ao repositorio, sem
+   * validar existencia via `EmployeesService`/`DocumentTypesService` como
+   * `vincular` faz — validar aqui lancaria `EntityNotFoundError` exatamente no
+   * caso que o requisito manda devolver lista vazia. A garantia de que a
+   * consulta em si devolve vazio para tipo/colaborador removido ou inexistente
+   * e da integração (`employee-documents.repository.integration.spec.ts` →
+   * `findPending` → "filtro para registro removido ou inexistente"): este
+   * teste, sozinho, passaria com qualquer implementação de `findPending`.
+   */
+  it('retorna vazio para filtro com tipo removido', async () => {
+    const resultado = await service.listarPendentes({
+      page: 1,
+      limit: 20,
+      documentTypeId: 'tipo-removido',
+    });
+
+    expect(resultado).toEqual({ items: [], total: 0, page: 1, limit: 20 });
+    expect(findPending).toHaveBeenCalledWith(
+      { page: 1, limit: 20 },
+      { employeeId: undefined, documentTypeId: 'tipo-removido' },
+    );
+    expect(employeesFindById).not.toHaveBeenCalled();
+    expect(documentTypesFindById).not.toHaveBeenCalled();
   });
 });

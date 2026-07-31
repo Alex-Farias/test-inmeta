@@ -346,5 +346,44 @@ describe('EmployeeDocumentsRepository (integration)', () => {
         expect(pagina.items.map((item) => item.id)).toEqual([anaCpf.id]);
       });
     });
+
+    /**
+     * REQ-10.7. Sem codigo de producao dedicado — a mesma query da TASK-049 ja
+     * garante isso por construcao (nota da TASK-050 em `tasks.md`). O colaborador
+     * e removido **direto pelo `DataSource`**, sem passar pela cascata da
+     * TASK-032, para isolar a defesa do `innerJoin` (D-06) da defesa da cascata —
+     * mesma tecnica de `submissions.integration.spec.ts` (TASK-043/045).
+     */
+    describe('filtro para registro removido ou inexistente', () => {
+      it('devolve vazio para filtro com colaborador removido', async () => {
+        const employees = dataSource.getRepository(Employee);
+        const documentTypes = dataSource.getRepository(DocumentType);
+
+        const ana = await employees.save(
+          employees.create({ name: 'Ana', email: 'ana-removida@example.com' }),
+        );
+        const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+        await repository.createMany(ana.id, [cpf.id]);
+
+        // Remove o colaborador sem passar pela cascata (TASK-032): o vinculo
+        // continua sem marcacao propria, e quem precisa excluir e o JOIN.
+        await dataSource.getRepository(Employee).softDelete({ id: ana.id });
+
+        const pagina = await repository.findPending({ page: 1, limit: 20 }, { employeeId: ana.id });
+
+        expect(pagina.total).toBe(0);
+        expect(pagina.items).toEqual([]);
+      });
+
+      it('devolve vazio para filtro com id inexistente', async () => {
+        const pagina = await repository.findPending(
+          { page: 1, limit: 20 },
+          { employeeId: '00000000-0000-4000-8000-000000000000' },
+        );
+
+        expect(pagina.total).toBe(0);
+        expect(pagina.items).toEqual([]);
+      });
+    });
   });
 });
