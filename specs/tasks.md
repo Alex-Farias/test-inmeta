@@ -577,13 +577,27 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     Testcontainers sempre parte de banco limpo e não prova o empilhamento sobre as três
     migrations anteriores.
 
-- [ ] **TASK-038** · P1 · `submissions` · adiciona envio de documento como versao 1
+- [x] **TASK-038** · P1 · `submissions` · adiciona envio de documento como versao 1
   - Requisitos: REQ-06.1, REQ-06.2
-  - Depende de: TASK-037, TASK-010
+  - Depende de: TASK-037
   - Aceite: "QUANDO um documento é enviado para um vínculo ativo sem envio anterior, o
     sistema DEVE registrar o envio como versão 1 e marcá-lo como ativo"
-  - Teste: `submissions.service.spec.ts` → "registra primeiro envio como versão 1 ativa"
-  - Commit: `feat(submissions)`
+  - Teste: `submissions.service.spec.ts` → "registra primeiro envio como versão 1 ativa", mais
+    "traduz violação de unicidade em conflito de concorrência" e "não engole erro de banco que
+    não seja violação de unicidade" para o `catch` introduzido aqui; e
+    `submissions.repository.integration.spec.ts` → "começa em 1 para vínculo sem envio",
+    "conta envios removidos ao calcular a próxima versão" e "registra o envio como ativo no
+    instante da entrega", porque o spec de unidade mocka `findNextVersion` e deixaria o SQL do
+    `COALESCE` sem execução
+  - Commit: `feat(submissions)` · `c51e1af`
+  - **`TASK-010` removida das dependências.** Ficou vestigial: sem `TransactionRunner` aqui,
+    porque é inserção única e a garantia de "no máximo um ativo" está em `uq_submission_active`
+    desde a TASK-037 (D-02). A transação entra na TASK-040, onde há duas escritas a coordenar.
+  - **Traduz `23505` já nesta task**, antecipando parte da TASK-041: a corrida de dois
+    primeiros envios simultâneos é tão real quanto a de reenvio, e sem a tradução o perdedor
+    receberia 500 cru no intervalo entre as duas tasks. Ver a nota na TASK-041.
+  - REQ-06.2 é satisfeito **por construção** — sob D-03 "entregue" é derivado da existência de
+    submission ativa, e não há escrita no vínculo que pudesse divergir.
 
 - [ ] **TASK-039** · P0 · `submissions` · prova versao ativa unica via teste de concorrencia
   - Requisitos: REQ-07.3
