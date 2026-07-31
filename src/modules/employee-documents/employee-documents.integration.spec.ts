@@ -43,11 +43,18 @@ describe('EmployeeDocumentsService (integration)', () => {
 
     const repository = new EmployeeDocumentsRepository(dataSource);
     const transactionRunner = new TransactionRunner(dataSource);
-    const documentTypesService = new DocumentTypesService(new DocumentTypesRepository(dataSource));
+    // Os dois ciclos sao resolvidos aqui do mesmo modo que o `forwardRef`
+    // resolve em producao: a referencia so e lida no momento da chamada,
+    // quando ambos ja foram construidos.
+    const documentTypesService = new DocumentTypesService(
+      new DocumentTypesRepository(dataSource),
+      transactionRunner,
+      {
+        removerVinculosDoTipo: (documentTypeId: string, manager?: EntityManager) =>
+          service.removerVinculosDoTipo(documentTypeId, manager),
+      } as unknown as EmployeeDocumentsService,
+    );
 
-    // O ciclo entre os dois services e resolvido aqui do mesmo modo que o
-    // `forwardRef` resolve em producao: a referencia so e lida no momento da
-    // chamada, quando ambos ja foram construidos.
     const employeesService = new EmployeesService(
       new EmployeesRepository(dataSource),
       transactionRunner,

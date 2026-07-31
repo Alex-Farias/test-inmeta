@@ -17,6 +17,8 @@ export class EmployeeDocumentsService {
     // Ciclo deliberado com `employees` — ver a nota em `employees.module.ts`.
     @Inject(forwardRef(() => EmployeesService))
     private readonly employeesService: EmployeesService,
+    // Ciclo deliberado com `document-types` — ver a nota no module dele.
+    @Inject(forwardRef(() => DocumentTypesService))
     private readonly documentTypesService: DocumentTypesService,
   ) {}
 

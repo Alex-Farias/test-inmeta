@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 
+import { EmployeeDocumentsService } from '../employee-documents/employee-documents.service';
 import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
 import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
+import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { DocumentType } from './domain/document-type.entity';
 import { CreateDocumentTypeDto } from './dto/create-document-type.dto';
 import { DocumentTypesRepository } from './document-types.repository';
@@ -15,7 +17,14 @@ export interface ListaPaginadaDeTiposDeDocumento {
 
 @Injectable()
 export class DocumentTypesService {
-  constructor(private readonly repository: DocumentTypesRepository) {}
+  constructor(
+    private readonly repository: DocumentTypesRepository,
+    private readonly transactionRunner: TransactionRunner,
+    // Ciclo deliberado com `employee-documents` — ver a nota em
+    // `document-types.module.ts`.
+    @Inject(forwardRef(() => EmployeeDocumentsService))
+    private readonly employeeDocumentsService: EmployeeDocumentsService,
+  ) {}
 
   /**
    * Checagem em codigo, nao captura de `23505` (REQ-02.3): o cadastro e
@@ -51,12 +60,24 @@ export class DocumentTypesService {
    * por nome de propriedade, sem distinguir dominio de ORM.
    *
    * Reaproveita `findById` para o not-found (REQ-13.1): tipo ja removido ou
-   * inexistente lanca `EntityNotFoundError` antes de qualquer escrita. Sem
-   * propagacao aos vinculos aqui — `employee_documents` ainda nao existe
-   * neste lote; a cascata e TASK-033/034.
+   * inexistente lanca `EntityNotFoundError` antes de qualquer escrita — fora
+   * da transacao, porque e leitura e nao ha o que desfazer.
+   *
+   * Operacao critica (D-04.4, REQ-13.4): marcar o tipo e propagar aos vinculos
+   * sao duas escritas com invariante entre elas — nao pode sobrar vinculo
+   * ativo exigindo tipo removido. Dai correrem sob o mesmo `manager` do
+   * `TransactionRunner` (D-05).
+   *
+   * Quem escreve em `employee_documents` e o modulo dono, via service publico
+   * (D-10). Os envios dos vinculos afetados nao sao tocados (REQ-13.5): a
+   * cascata para no vinculo, e e o que preserva o historico.
    */
   async softDelete(id: string): Promise<void> {
     const tipo = await this.findById(id);
-    await this.repository.softDelete(tipo.id);
+
+    await this.transactionRunner.run(async (manager) => {
+      await this.repository.softDelete(tipo.id, manager);
+      await this.employeeDocumentsService.removerVinculosDoTipo(tipo.id, manager);
+    });
   }
 }

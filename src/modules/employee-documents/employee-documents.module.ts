@@ -14,15 +14,16 @@ import { EmployeeDocumentsService } from './employee-documents.service';
  * publicos deles (REQ-03.3/03.4, D-10) — nunca o repositorio. So o proprio
  * service sai nos `exports` — repositorio nao vaza entre modulos.
  *
- * `forwardRef` em `EmployeesModule`: a partir da TASK-032 o consumo e mutuo —
- * `employees` chama de volta este service para propagar a remocao aos vinculos
- * (REQ-12.2). Ver a nota em `employees.module.ts`.
+ * `forwardRef` nos dois: o consumo passou a ser mutuo com `employees` na
+ * TASK-032 e com `document-types` na TASK-034 — os dois chamam de volta este
+ * service para propagar a remocao aos vinculos (REQ-12.2, REQ-13.2). Ver a
+ * nota em `employees.module.ts`.
  */
 @Module({
   imports: [
     TypeOrmModule.forFeature([EmployeeDocument]),
     forwardRef(() => EmployeesModule),
-    DocumentTypesModule,
+    forwardRef(() => DocumentTypesModule),
   ],
   controllers: [EmployeeDocumentsController],
   providers: [EmployeeDocumentsService, EmployeeDocumentsRepository, TransactionRunner],
