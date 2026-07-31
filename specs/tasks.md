@@ -431,14 +431,16 @@ rodam.
     construção. Task de verificação.
   - Commit: `test(employee-documents)` · `ef66227`
 
-- [ ] **TASK-028** · P1 · `employee-documents` · rejeita lote invalido ou com vinculo duplicado
+- [x] **TASK-028** · P1 · `employee-documents` · rejeita lote invalido ou com vinculo duplicado
   - Requisitos: REQ-03.3, REQ-03.4, REQ-03.5
   - Depende de: TASK-027
   - Aceite: tipo removido/inexistente, colaborador removido/inexistente, ou vínculo ativo já
     existente rejeitam a operação inteira, sem criar nenhum vínculo
-  - Teste: `employee-documents.service.spec.ts` → "rejeita lote inteiro com tipo removido" e
-    "rejeita lote com vínculo ativo duplicado"
-  - Commit: `feat(employee-documents)`
+  - Teste: `employee-documents.service.spec.ts` → "rejeita lote inteiro com tipo removido",
+    "rejeita lote inteiro com colaborador removido ou inexistente" e "rejeita lote com
+    vínculo ativo duplicado" (o terceiro caso do Aceite, REQ-03.4, não estava nomeado na
+    linha original de `Teste:` — adicionado para cobrir o Aceite por completo)
+  - Commit: `feat(employee-documents)` · `913f700`
 
 - [>] **TASK-029** · P1 · `employee-documents` · rejeita lote com vinculo ativo duplicado
   - Consolidada em **TASK-028**: mesma operação de lote, mesmo módulo, três asserções
