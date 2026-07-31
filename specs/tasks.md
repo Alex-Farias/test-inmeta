@@ -798,8 +798,27 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Depende de: TASK-040
   - Aceite: retorna todos os envios do vínculo, ativos e inativos, indicando versão, instante
     e qual é o ativo, em ordem determinística de versão
-  - Teste: `submissions.repository.integration.spec.ts` → "retorna histórico ordenado por versão"
+  - Teste: `submissions.repository.integration.spec.ts` → "retorna histórico ordenado por
+    versão", mais "não mistura envios de outro vínculo", "inclui envio removido no histórico",
+    "pagina o histórico sem repetir nem omitir versão" e "retorna página vazia para vínculo
+    sem envio"
   - Commit: `feat(submissions)`
+  - **`deletedAt` entrou no payload, quinto campo (design §4.3).** Com os quatro de REQ-09.2,
+    um envio removido e um superado por reenvio ficam idênticos na resposta — ambos
+    `isActive: false`. REQ-08 exige que a remoção não falsifique o histórico, e não distinguir
+    os dois falsifica por omissão. A tabela de combinações das duas colunas foi registrada em
+    §4.3 como contrato, não como comentário de código.
+  - **Segundo `withDeleted` do sistema**, e o comentário de `findNextVersion` — que se
+    declarava "único ponto que ignora o filtro de soft delete" — foi corrigido. Os dois motivos
+    são diferentes: lá é não reemitir número de versão, aqui é a exceção declarada a REQ-14.2.
+  - **Ordem `version DESC` sem desempate por `id`**, ao contrário do que D-15 exige das outras
+    listagens: `uq_submission_version` torna `version` única por vínculo, então ela já é
+    ordenação total e não há dois envios que possam trocar de posição entre páginas.
+  - **Falsificado antes de commitar.** Retirado o `withDeleted`, "inclui envio removido no
+    histórico" falha — total 2 em vez de 3.
+  - **Ressalva do aceite.** Um id de vínculo que nunca existiu ainda devolve página vazia, não
+    404. A distinção entre inexistente e removido é da TASK-045, que introduz `findAnyById`.
+    Sem a ressalva, o commit isolado se lê como se REQ-09 estivesse inteiro aqui.
 
 - [ ] **TASK-045** · P0 · `submissions` · mantem historico acessivel apos remocao
   - Requisitos: REQ-09.4, REQ-09.5, REQ-14.6

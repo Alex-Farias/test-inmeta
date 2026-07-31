@@ -214,4 +214,111 @@ describe('DocumentSubmission (integration)', () => {
       expect(linha?.deletedAt).toBeNull();
     });
   });
+
+  describe('findHistory', () => {
+    /** Padrao das demais listagens; o service so acrescenta `page`/`limit`. */
+    const paginacao = { page: 1, limit: 20 };
+
+    /** N envios sequenciais no vinculo, o ultimo ativo e os anteriores nao. */
+    async function criarEnvios(vinculoId: string, quantidade: number): Promise<void> {
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      for (let version = 1; version <= quantidade; version += 1) {
+        await submissions.update({ employeeDocumentId: vinculoId }, { isActive: false });
+        await submissions.save(
+          submissions.create({
+            employeeDocumentId: vinculoId,
+            version,
+            isActive: true,
+            submittedAt: new Date(),
+          }),
+        );
+      }
+    }
+
+    it('retorna histórico ordenado por versão', async () => {
+      const vinculo = await criarVinculo('CPF');
+      await criarEnvios(vinculo.id, 4);
+
+      const { items, total } = await repository.findHistory(vinculo.id, paginacao);
+
+      // REQ-09.1 e REQ-09.3: todos os envios, ativos e inativos, do mais
+      // recente para o mais antigo.
+      expect(total).toBe(4);
+      expect(items.map((envio) => envio.version)).toEqual([4, 3, 2, 1]);
+
+      // REQ-09.2: cada item traz versao, instante e se e o ativo.
+      expect(items.filter((envio) => envio.isActive)).toHaveLength(1);
+      expect(items[0].isActive).toBe(true);
+      expect(items[0].submittedAt).toBeInstanceOf(Date);
+    });
+
+    it('não mistura envios de outro vínculo', async () => {
+      const vinculo = await criarVinculo('RG');
+      const outro = await criarVinculo('CNH');
+      await criarEnvios(vinculo.id, 2);
+      await criarEnvios(outro.id, 3);
+
+      const { items, total } = await repository.findHistory(vinculo.id, paginacao);
+
+      expect(total).toBe(2);
+      expect(items.every((envio) => envio.employeeDocumentId === vinculo.id)).toBe(true);
+    });
+
+    it('inclui envio removido no histórico', async () => {
+      const vinculo = await criarVinculo('ASO');
+      await criarEnvios(vinculo.id, 3);
+
+      // Marcado direto no banco: a remocao por rota chega na TASK-046. O que
+      // este caso prova e a **visibilidade da consulta**, nao a operacao de
+      // remover — e visibilidade e o que a TASK-044 possui.
+      const submissions = dataSource.getRepository(DocumentSubmission);
+      await submissions.update(
+        { employeeDocumentId: vinculo.id, version: 3 },
+        { isActive: false, deletedAt: new Date() },
+      );
+
+      const { items, total } = await repository.findHistory(vinculo.id, paginacao);
+
+      // REQ-14.2 excetua o historico, e REQ-08.4 proibe reaproveitar o numero:
+      // omitir a versao 3 deixaria um buraco inexplicado entre a 4 e a 2 no
+      // proximo envio. O historico mentiria por omissao.
+      expect(total).toBe(3);
+      expect(items.map((envio) => envio.version)).toEqual([3, 2, 1]);
+      expect(items[0].deletedAt).toBeInstanceOf(Date);
+
+      // A distincao que o quinto campo compra: removida e superada saem as duas
+      // com `isActive: false`, e so `deletedAt` as separa.
+      expect(items[0].isActive).toBe(false);
+      expect(items[1].isActive).toBe(false);
+      expect(items[1].deletedAt).toBeNull();
+    });
+
+    it('pagina o histórico sem repetir nem omitir versão', async () => {
+      const vinculo = await criarVinculo('CTPS');
+      await criarEnvios(vinculo.id, 5);
+
+      const primeira = await repository.findHistory(vinculo.id, { page: 1, limit: 2 });
+      const segunda = await repository.findHistory(vinculo.id, { page: 2, limit: 2 });
+      const terceira = await repository.findHistory(vinculo.id, { page: 3, limit: 2 });
+
+      // `version` e unica por vinculo (`uq_submission_version`), entao e
+      // ordenacao total sozinha — sem o desempate por `id` que D-15 exige das
+      // listagens cuja chave de ordenacao admite empate.
+      expect(primeira.items.map((envio) => envio.version)).toEqual([5, 4]);
+      expect(segunda.items.map((envio) => envio.version)).toEqual([3, 2]);
+      expect(terceira.items.map((envio) => envio.version)).toEqual([1]);
+
+      // REQ-11.5: o total e o do conjunto, nao o da pagina.
+      expect(primeira.total).toBe(5);
+    });
+
+    it('retorna página vazia para vínculo sem envio', async () => {
+      const vinculo = await criarVinculo('Diploma');
+
+      const { items, total } = await repository.findHistory(vinculo.id, paginacao);
+
+      expect(items).toEqual([]);
+      expect(total).toBe(0);
+    });
+  });
 });

@@ -2,9 +2,17 @@ import { Injectable } from '@nestjs/common';
 
 import { EntityNotFoundError, traduzirViolacaoDeUnicidade } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
+import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DocumentSubmission } from './domain/document-submission.entity';
 import { EmployeeDocumentsRepository } from './employee-documents.repository';
 import { SubmissionsRepository } from './submissions.repository';
+
+export interface HistoricoDeEnvios {
+  items: DocumentSubmission[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 @Injectable()
 export class SubmissionsService {
@@ -73,5 +81,26 @@ export class SubmissionsService {
       const traduzido = traduzirViolacaoDeUnicidade(erro);
       throw traduzido ?? erro;
     }
+  }
+
+  /**
+   * Historico completo do vinculo (REQ-09).
+   *
+   * **Nao resolve o vinculo antes de consultar**, ao contrario de `enviar`. E
+   * deliberado: esta e a excecao declarada a REQ-14.2 (design 4.3), e o
+   * historico responde mesmo com vinculo, colaborador ou tipo removidos —
+   * `findSubmittableById` recusaria exatamente os casos que REQ-09.4 e REQ-09.5
+   * exigem atender.
+   *
+   * O 404 para vinculo que **nunca existiu** — distinto de removido — entra na
+   * TASK-045, com `findAnyById`. Ate la um id desconhecido devolve pagina vazia.
+   */
+  async consultarHistorico(
+    employeeDocumentId: string,
+    pagination: PaginationQueryDto,
+  ): Promise<HistoricoDeEnvios> {
+    const { items, total } = await this.repository.findHistory(employeeDocumentId, pagination);
+
+    return { items, total, page: pagination.page, limit: pagination.limit };
   }
 }

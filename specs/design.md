@@ -888,15 +888,40 @@ enunciado). Documentação gerada a partir dos DTOs — ver `stack.md`.
 // GET /employee-documents/:id/submissions
 {
   "items": [
-    { "id": "…", "version": 2, "isActive": true,  "submittedAt": "…" },
-    { "id": "…", "version": 1, "isActive": false, "submittedAt": "…" }
+    { "id": "…", "version": 3, "isActive": false, "submittedAt": "…", "deletedAt": "2026-07-30T…" },
+    { "id": "…", "version": 2, "isActive": false, "submittedAt": "…", "deletedAt": null },
+    { "id": "…", "version": 1, "isActive": false, "submittedAt": "…", "deletedAt": null }
   ],
-  "total": 2, "page": 1, "limit": 20
+  "total": 3, "page": 1, "limit": 20
 }
 ```
 
 A rota de histórico permanece acessível para vínculo, colaborador ou tipo removidos
 (REQ-09.4, REQ-09.5, REQ-14.6). É a exceção explícita a REQ-14.2, e a única.
+
+**`deletedAt` é o quinto campo, e faz parte do contrato.** REQ-09.2 exige apenas versão,
+instante e se é o ativo — mas com só esses, um envio **removido** e um envio **superado por
+reenvio** ficam idênticos na resposta: os dois saem `isActive: false`. REQ-08 diz que a
+remoção não pode falsificar o histórico, e um histórico que não distingue os dois casos
+falsifica por omissão. As duas colunas juntas formam a semântica:
+
+| `isActive` | `deletedAt` | Significado |
+|---|---|---|
+| `true` | `null` | O envio vigente |
+| `false` | `null` | Superado por reenvio — a versão seguinte tomou o lugar |
+| `false` | data | O **próprio envio** foi removido (REQ-08). D-13 marca as duas colunas juntas |
+| `true` | data | Não deve ocorrer. Se ocorrer, é falha de D-13, não estado válido |
+
+**A terceira linha não é efeito de remoção do vínculo ou do colaborador.** Nenhuma cascata
+alcança `document_submissions` — a propagação de remoção de colaborador e de tipo para em
+`employee_documents`. Remover o colaborador deixa os envios com `deletedAt: null` e o
+histórico byte a byte igual, e é exatamente isso que faz REQ-09.4 e REQ-09.5 funcionarem sem
+tratamento especial. `deletedAt` preenchido num envio significa uma coisa só: aquele envio
+foi removido por REQ-08.
+
+A consulta usa `withDeleted` de propósito. Omitir o envio removido deixaria um buraco
+inexplicado na sequência de versões, porque REQ-08.4 proíbe reaproveitar o número já
+emitido — quem lesse o histórico veria a versão 4 suceder a 2 sem explicação.
 
 ### 4.4 Estatísticas
 
