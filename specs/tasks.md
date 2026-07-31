@@ -599,16 +599,31 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - REQ-06.2 é satisfeito **por construção** — sob D-03 "entregue" é derivado da existência de
     submission ativa, e não há escrita no vínculo que pudesse divergir.
 
-- [ ] **TASK-039** · P0 · `submissions` · prova versao ativa unica via teste de concorrencia
-  - Requisitos: REQ-07.3
+- [x] **TASK-039** · P0 · `submissions` · prova concorrencia no primeiro envio via indice parcial
+  - Requisitos: REQ-07.3, REQ-07.5
   - Depende de: TASK-038
-  - Aceite: tentativa de inserir segundo envio ativo para o mesmo vínculo falha no banco
-  - Teste: `submissions.repository.integration.spec.ts` → "rejeita segundo envio ativo"
-  - Commit: `test(submissions)`
-  - **Título ajustado na TASK-038.** O anterior ("garante versão ativa única via índice
-    parcial") lia como se esta task criasse o índice; ele nasce com a tabela, na TASK-037. A
-    inserção direta de dois ativos já é coberta lá — o que resta aqui é o caminho de
-    concorrência real, pelo service.
+  - Aceite: duas requisições de primeiro envio disparadas simultaneamente (`Promise.all`) para
+    o mesmo vínculo — exatamente uma submission persiste com `version = 1` e `is_active = true`;
+    a perdedora recebe `ConcurrentSubmissionError` (409), não 500 cru
+  - Teste: `submissions.concurrency.integration.spec.ts` → "persiste exatamente um de dois
+    primeiros envios simultâneos"
+  - Commit: `test(submissions)` · `bd89a15`
+  - **Re-escopada, não absorvida.** O teste que esta task declarava ("rejeita segundo envio
+    ativo") foi entregue por engano no commit da TASK-037, junto dos testes de índice. Ele
+    permanece lá: prova que a constraint existe e rejeita duplicata sob escrita **não
+    concorrente**, o que é válido por si. Mas REQ-07.3 diz "EM QUALQUER MOMENTO" — afirmação
+    sobre concorrência, que duas inserções sequenciais sub-provam. O que faltava era a corrida
+    real, e é o que esta task passou a cobrir.
+  - Cobre também a tradução de `23505` introduzida na TASK-038, que até aqui só tinha
+    cobertura por mock, com o código de erro fabricado à mão.
+  - **Não é duplicata da TASK-042.** Esta é concorrência no **primeiro** envio — duas
+    inserções disputando uma linha que ainda não existe. A TASK-042 é concorrência no
+    **reenvio** — duas transações disputando desativar a linha existente e inserir a próxima.
+    Mesma constraint, dois caminhos de código, cada um precisa da sua prova.
+  - Estabilidade verificada em cinco execuções seguidas. O resultado não depende do
+    interleaving: se ambas leem versão 1 a perdedora colide, e se a primeira já commitou a
+    segunda calcula versão 2 e colide em `uq_submission_active` — os dois caminhos convergem
+    em uma linha e um `23505`.
 
 - [ ] **TASK-040** · P0 · `submissions` · adiciona reenvio com incremento de versao
   - Requisitos: REQ-07.1, REQ-07.2, REQ-07.4
@@ -630,6 +645,15 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     porque sem isso a corrida de dois primeiros envios devolveria 500 cru no intervalo entre
     as duas tasks. O que falta aqui é a discriminação por nome de constraint (D-14) e a
     extração do tratamento para um ponto único.
+  - **Cuidado medido na TASK-039, a considerar no desenho.** Na corrida de primeiro envio as
+    duas constraints podem ser violadas pela mesma inserção, e qual delas o Postgres reporta
+    depende da ordem em que ele checa os índices — não é garantia documentada. Sondado com
+    seis execuções: veio `uq_submission_active` em todas, provavelmente por ter sido criado
+    primeiro e ter OID menor. Hoje é indiferente, porque tudo mapeia para
+    `ConcurrentSubmissionError`; depois de D-14 os dois passam a produzir erros distintos, e
+    o teste da TASK-039 herdaria essa dependência. A discriminação não deve depender da ordem
+    de checagem — colisão de versão num vínculo que já tem envio ativo é conflito de
+    concorrência, não erro de cálculo de versão.
 
 - [ ] **TASK-042** · P0 · `submissions` · cobre reenvios simultaneos com promise.all
   - Requisitos: REQ-07.5, REQ-07.6
@@ -639,6 +663,11 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Teste: `submissions.concurrency.integration.spec.ts` → "persiste exatamente um de dois
     reenvios simultâneos"
   - Commit: `test(submissions)`
+  - **Não é duplicata da TASK-039**, apesar de as duas usarem `Promise.all` sobre a mesma
+    constraint e morarem no mesmo arquivo. Lá são duas inserções disputando uma linha que
+    ainda não existe, sem transação; aqui são duas transações disputando desativar a linha
+    existente e inserir a próxima. O segundo caminho tem estado anterior a preservar, e é o
+    único dos dois onde REQ-07.6 — "sem versão órfã" — pode falhar de verdade.
 
 - [ ] **TASK-043** · P0 · `submissions` · rejeita envio para vinculo removido
   - Requisitos: REQ-06.4, REQ-06.5, REQ-14.8
