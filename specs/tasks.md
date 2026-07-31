@@ -562,13 +562,20 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 
 ## Envio e versionamento
 
-- [ ] **TASK-037** · P1 · `submissions` · adiciona entidade e migration de envios
+- [x] **TASK-037** · P1 · `submissions` · adiciona entidade e migration de envios
   - Requisitos: REQ-06.3
   - Depende de: TASK-025
   - Aceite: migration cria `document_submissions` com `uq_submission_active` parcial,
     `uq_submission_version` **não parcial** e `idx_submissions_recent` (§1.3)
-  - Teste: `submissions.repository.integration.spec.ts` → "aplica os três índices declarados"
-  - Commit: `feat(submissions)`
+  - Teste: `submissions.repository.integration.spec.ts` → "aplica os três índices declarados",
+    que confere as três definições em `pg_indexes`; adicionados "rejeita segundo envio ativo
+    para o mesmo vínculo" e "não reemite versão de envio removido", porque conferir a
+    definição prova que o índice **existe**, não que a semântica é a pretendida — e a natureza
+    não parcial do segundo índice é a mais fácil de reverter por engano
+  - Commit: `feat(submissions)` · `2084712`
+  - Migration também verificada com `npm run migration:run` sobre o banco de desenvolvimento:
+    Testcontainers sempre parte de banco limpo e não prova o empilhamento sobre as três
+    migrations anteriores.
 
 - [ ] **TASK-038** · P1 · `submissions` · adiciona envio de documento como versao 1
   - Requisitos: REQ-06.1, REQ-06.2
