@@ -976,14 +976,20 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     → desvincular, conferindo `listarPendentes` a cada passo — via `EmployeeDocumentsService`/
     `SubmissionsService`, não repositório direto, pela mesma porta que a rota HTTP usa.
 
-- [ ] **TASK-052** · P0 · `employee-documents` · exclui de pendentes vinculos de colaborador ou tipo removido
+- [x] **TASK-052** · P0 · `employee-documents` · exclui de pendentes vinculos de colaborador ou tipo removido
   - Requisitos: REQ-14.3, REQ-14.4
   - Depende de: TASK-048, TASK-032, TASK-034
   - Aceite: vínculo cujo colaborador ou tipo foi removido some de pendentes **mesmo que o
     próprio vínculo não esteja marcado** — os JOINs repetem `deleted_at IS NULL` (D-06)
   - Teste: `employee-documents.repository.integration.spec.ts` → "exclui pendente de
     colaborador removido"
-  - Commit: `test(employee-documents)`
+  - Commit: `test(employee-documents)` · `44430c8`
+  - **Sem código de produção novo** — mesma query da TASK-048, defesa em profundidade de D-06.
+    Colaborador/tipo removidos **direto pelo `DataSource`**, sem passar por
+    `removerVinculosDoColaborador`/`removerVinculosDoTipo` (TASK-032/034), para isolar a
+    garantia do `innerJoin` da garantia da cascata.
+  - **Nome declarado cobre só o colaborador (REQ-14.3).** Adicionado "exclui pendente de tipo
+    removido" para REQ-14.4, espelho simétrico — mesmo padrão de expansão da TASK-031/033.
 
 - [ ] **TASK-070** · P1 · `db` · valida plano de consulta dos pendentes com explain
   - Requisitos: REQ-10.1
