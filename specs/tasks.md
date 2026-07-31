@@ -533,14 +533,25 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 
 ## Re-vínculo
 
-- [ ] **TASK-035** · P1 · `employee-documents` · permite re-vinculo apos desvinculacao
-  - Requisitos: REQ-05.1, REQ-05.2
+- [x] **TASK-035** · P1 · `employee-documents` · permite re-vinculo apos desvinculacao
+  - Requisitos: REQ-05.1
   - Depende de: TASK-030
   - Aceite: "QUANDO um colaborador é vinculado a um tipo de documento com o qual já teve
     vínculo removido, o sistema DEVE criar um vínculo novo e distinto do anterior"
   - Teste: `employee-documents.repository.integration.spec.ts` → "cria vínculo novo após
-    desvinculação"
-  - Commit: `feat(employee-documents)`
+    desvinculação"; adicionado também `employee-documents.integration.spec.ts` → "revincula
+    par desvinculado sem acusar duplicidade". O critério fala em **"é vinculado"** — a
+    operação, não o `INSERT` —, e o teste de repositório sozinho não alcança a checagem de
+    duplicidade da TASK-028, que é onde o requisito de fato quebraria
+  - Commit: `test(employee-documents)` · `e082b2d`
+  - Sem código de produção novo — a garantia já existia por construção desde TASK-025
+    (`uq_employee_document_active` parcial) e TASK-026 (`findActiveDocumentTypeIds` usa
+    `find`, que recebe o filtro do `@DeleteDateColumn`). Task de verificação, commit `test`,
+    como TASK-018/019/027. **Os dois testes foram verificados a morder**: com o índice sem
+    `WHERE` o primeiro falha por `23505`; com `withDeleted: true` na checagem, o segundo falha
+    por `DuplicatedResourceError`.
+  - **REQ-05.2 saiu desta task para a TASK-062**, confirmado com o humano: exige
+    `document_submissions`, que só nasce na TASK-037. Ver a nota lá e em D-07.
 
 - [>] **TASK-036** · P1 · `employee-documents` · cobre isolamento do vinculo anterior no re-vinculo
   - Realocada para **TASK-062**. A prova exige submissions (TASK-044) e a listagem de
