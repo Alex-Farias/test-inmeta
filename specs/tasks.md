@@ -1019,7 +1019,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Aceite: expõe `employeesFullyCompliantPercentage` e `documentsSubmittedPercentage`,
     nomeados sem ambiguidade, calculados em SQL (D-09)
   - Teste: `statistics.repository.integration.spec.ts` → "calcula os dois percentuais distintos"
-  - Commit: `feat(statistics)`
+  - Commit: `feat(statistics)` · `e8f9571`
   - **Módulo novo, sem entidade própria.** `StatisticsRepository` acessa o schema por SQL
     direto via `dataSource.query`/`manager.query` (D-10) — as duas leituras de D-09 num único
     round-trip: `documents_submitted_percentage` agregado sobre a CTE `vinculo`,
