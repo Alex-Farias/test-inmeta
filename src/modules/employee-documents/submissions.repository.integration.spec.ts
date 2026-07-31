@@ -9,10 +9,12 @@ import { DocumentType } from '../document-types/domain/document-type.entity';
 import { Employee } from '../employees/domain/employee.entity';
 import { DocumentSubmission } from './domain/document-submission.entity';
 import { EmployeeDocument } from './domain/employee-document.entity';
+import { SubmissionsRepository } from './submissions.repository';
 
 describe('DocumentSubmission (integration)', () => {
   let container: StartedPostgreSqlContainer;
   let dataSource: DataSource;
+  let repository: SubmissionsRepository;
 
   /** Vinculo ativo recem-criado, para pendurar os envios de cada teste. */
   async function criarVinculo(nomeDoTipo: string): Promise<EmployeeDocument> {
@@ -51,6 +53,7 @@ describe('DocumentSubmission (integration)', () => {
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
+    repository = new SubmissionsRepository(dataSource);
   }, 120_000);
 
   afterAll(async () => {
@@ -138,6 +141,42 @@ describe('DocumentSubmission (integration)', () => {
           }),
         ),
       ).rejects.toThrow();
+    });
+  });
+
+  describe('findNextVersion', () => {
+    it('começa em 1 para vínculo sem envio', async () => {
+      const vinculo = await criarVinculo('ASO');
+
+      await expect(repository.findNextVersion(vinculo.id)).resolves.toBe(1);
+    });
+
+    it('conta envios removidos ao calcular a próxima versão', async () => {
+      const vinculo = await criarVinculo('CTPS');
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const primeiro = await repository.create(vinculo.id, 1);
+      await submissions.softDelete(primeiro.id);
+
+      // O `.withDeleted()` de `findNextVersion` e o que faz REQ-08.4 valer: se
+      // filtrasse removidos, voltaria 1 de novo e `uq_submission_version` —
+      // que nao e parcial — rejeitaria a insercao.
+      await expect(repository.findNextVersion(vinculo.id)).resolves.toBe(2);
+    });
+  });
+
+  describe('create', () => {
+    it('registra o envio como ativo no instante da entrega', async () => {
+      const vinculo = await criarVinculo('PIS');
+
+      const criado = await repository.create(vinculo.id, 1);
+
+      const linha = await dataSource.getRepository(DocumentSubmission).findOneBy({ id: criado.id });
+
+      expect(linha?.version).toBe(1);
+      expect(linha?.isActive).toBe(true);
+      expect(linha?.submittedAt).toBeInstanceOf(Date);
+      expect(linha?.deletedAt).toBeNull();
     });
   });
 });

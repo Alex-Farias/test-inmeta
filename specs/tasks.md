@@ -585,12 +585,16 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Teste: `submissions.service.spec.ts` → "registra primeiro envio como versão 1 ativa"
   - Commit: `feat(submissions)`
 
-- [ ] **TASK-039** · P0 · `submissions` · garante versao ativa unica via indice parcial
+- [ ] **TASK-039** · P0 · `submissions` · prova versao ativa unica via teste de concorrencia
   - Requisitos: REQ-07.3
   - Depende de: TASK-038
   - Aceite: tentativa de inserir segundo envio ativo para o mesmo vínculo falha no banco
   - Teste: `submissions.repository.integration.spec.ts` → "rejeita segundo envio ativo"
   - Commit: `test(submissions)`
+  - **Título ajustado na TASK-038.** O anterior ("garante versão ativa única via índice
+    parcial") lia como se esta task criasse o índice; ele nasce com a tabela, na TASK-037. A
+    inserção direta de dois ativos já é coberta lá — o que resta aqui é o caminho de
+    concorrência real, pelo service.
 
 - [ ] **TASK-040** · P0 · `submissions` · adiciona reenvio com incremento de versao
   - Requisitos: REQ-07.1, REQ-07.2, REQ-07.4
@@ -608,6 +612,10 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     `DuplicatedResourceError` (D-14)
   - Teste: `unique-violation.mapper.spec.ts` → "discrimina conflito de ativo de conflito de versão"
   - Commit: `feat(submissions)`
+  - **Estende, não introduz.** A TASK-038 já traduz `23505` em `ConcurrentSubmissionError`,
+    porque sem isso a corrida de dois primeiros envios devolveria 500 cru no intervalo entre
+    as duas tasks. O que falta aqui é a discriminação por nome de constraint (D-14) e a
+    extração do tratamento para um ponto único.
 
 - [ ] **TASK-042** · P0 · `submissions` · cobre reenvios simultaneos com promise.all
   - Requisitos: REQ-07.5, REQ-07.6

@@ -4,10 +4,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DocumentTypesModule } from '../document-types/document-types.module';
 import { EmployeesModule } from '../employees/employees.module';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
+import { DocumentSubmission } from './domain/document-submission.entity';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { EmployeeDocumentsController } from './employee-documents.controller';
 import { EmployeeDocumentsRepository } from './employee-documents.repository';
 import { EmployeeDocumentsService } from './employee-documents.service';
+import { SubmissionsController } from './submissions.controller';
+import { SubmissionsRepository } from './submissions.repository';
+import { SubmissionsService } from './submissions.service';
 
 /**
  * Importa `EmployeesModule`/`DocumentTypesModule` para consumir os services
@@ -21,12 +25,18 @@ import { EmployeeDocumentsService } from './employee-documents.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([EmployeeDocument]),
+    TypeOrmModule.forFeature([EmployeeDocument, DocumentSubmission]),
     forwardRef(() => EmployeesModule),
     forwardRef(() => DocumentTypesModule),
   ],
-  controllers: [EmployeeDocumentsController],
-  providers: [EmployeeDocumentsService, EmployeeDocumentsRepository, TransactionRunner],
+  controllers: [EmployeeDocumentsController, SubmissionsController],
+  providers: [
+    EmployeeDocumentsService,
+    EmployeeDocumentsRepository,
+    SubmissionsService,
+    SubmissionsRepository,
+    TransactionRunner,
+  ],
   exports: [EmployeeDocumentsService],
 })
 export class EmployeeDocumentsModule {}
