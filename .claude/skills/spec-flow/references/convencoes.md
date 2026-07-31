@@ -48,7 +48,7 @@ test(employee-documents): cobre rollback da vinculacao em lote
 feat(submissions): adiciona envio de documento com versionamento
 test(submissions): garante versao ativa unica via indice parcial
 feat(submissions): traduz violacao de unicidade em conflito 409
-test(submissions): cobre reenvios simultaneos com promise.all
+test(submissions): cobre reenvios simultaneos com barreira de transacao
 feat(employee-documents): adiciona listagem de pendentes com filtros
 feat(statistics): adiciona agregacao de conformidade global
 docs: adiciona readme com decisoes tecnicas e trade-offs

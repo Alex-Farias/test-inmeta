@@ -5,6 +5,7 @@ import { CreateEmployees1785416355470 } from '../../database/migrations/17854163
 import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785446317559-CreateDocumentTypes';
 import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/1785453770311-CreateEmployeeDocuments';
 import { CreateDocumentSubmissions1785470132175 } from '../../database/migrations/1785470132175-CreateDocumentSubmissions';
+import { criarBarreira, sincronizarEm } from '../../../test/helpers/concurrent-transactions';
 import { ConcurrentSubmissionError } from '../../shared/errors';
 import { DocumentType } from '../document-types/domain/document-type.entity';
 import { Employee } from '../employees/domain/employee.entity';
@@ -24,6 +25,7 @@ describe('Submissions — concorrência (integration)', () => {
   let container: StartedPostgreSqlContainer;
   let dataSource: DataSource;
   let service: SubmissionsService;
+  let repository: SubmissionsRepository;
 
   async function criarVinculo(nomeDoTipo: string): Promise<EmployeeDocument> {
     const employees = dataSource.getRepository(Employee);
@@ -62,10 +64,8 @@ describe('Submissions — concorrência (integration)', () => {
     await dataSource.initialize();
     await dataSource.runMigrations();
 
-    service = new SubmissionsService(
-      new SubmissionsRepository(dataSource),
-      new EmployeeDocumentsRepository(dataSource),
-    );
+    repository = new SubmissionsRepository(dataSource);
+    service = new SubmissionsService(repository, new EmployeeDocumentsRepository(dataSource));
   }, 120_000);
 
   afterAll(async () => {
@@ -83,10 +83,22 @@ describe('Submissions — concorrência (integration)', () => {
     it('persiste exatamente um de dois primeiros envios simultâneos', async () => {
       const vinculo = await criarVinculo('CPF');
 
-      const resultados = await Promise.allSettled([
-        service.enviar(vinculo.id),
-        service.enviar(vinculo.id),
-      ]);
+      // A barreira em `findNextVersion` prende as duas chamadas depois de a
+      // transacao abrir e antes da insercao disputada. Sem ela, `Promise.all`
+      // deixa a primeira commitar antes de a segunda comecar, e o teste passa
+      // sem que sobreposicao alguma tenha ocorrido — ver design.md, secao 5.
+      const barreira = criarBarreira(2);
+      const restaurar = sincronizarEm(repository, 'findNextVersion', barreira);
+
+      let resultados: PromiseSettledResult<unknown>[];
+      try {
+        resultados = await Promise.allSettled([
+          service.enviar(vinculo.id),
+          service.enviar(vinculo.id),
+        ]);
+      } finally {
+        restaurar();
+      }
 
       const cumpridas = resultados.filter((resultado) => resultado.status === 'fulfilled');
       const rejeitadas = resultados.filter((resultado) => resultado.status === 'rejected');

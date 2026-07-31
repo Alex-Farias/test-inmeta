@@ -602,9 +602,11 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 - [x] **TASK-039** · P0 · `submissions` · prova concorrencia no primeiro envio via indice parcial
   - Requisitos: REQ-07.3, REQ-07.5
   - Depende de: TASK-038
-  - Aceite: duas requisições de primeiro envio disparadas simultaneamente (`Promise.all`) para
-    o mesmo vínculo — exatamente uma submission persiste com `version = 1` e `is_active = true`;
-    a perdedora recebe `ConcurrentSubmissionError` (409), não 500 cru
+  - Aceite: duas requisições de primeiro envio disparadas simultaneamente para o mesmo vínculo
+    — exatamente uma submission persiste com `version = 1` e `is_active = true`; a perdedora
+    recebe `ConcurrentSubmissionError` (409), não 500 cru. Usa **barreira explícita de
+    transação** (sincronização manual do ponto de overlap), não `Promise.all` ingênuo — ver
+    `design.md` §5
   - Teste: `submissions.concurrency.integration.spec.ts` → "persiste exatamente um de dois
     primeiros envios simultâneos"
   - Commit: `test(submissions)` · `bd89a15`
@@ -620,10 +622,14 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     inserções disputando uma linha que ainda não existe. A TASK-042 é concorrência no
     **reenvio** — duas transações disputando desativar a linha existente e inserir a próxima.
     Mesma constraint, dois caminhos de código, cada um precisa da sua prova.
-  - Estabilidade verificada em cinco execuções seguidas. O resultado não depende do
-    interleaving: se ambas leem versão 1 a perdedora colide, e se a primeira já commitou a
-    segunda calcula versão 2 e colide em `uq_submission_active` — os dois caminhos convergem
-    em uma linha e um `23505`.
+  - **Primeira versão do teste estava errada, corrigida durante a TASK-040.** Ela usava
+    `Promise.all` sobre duas chamadas de service e passou por motivo errado: as transações não
+    se sobrepunham, e o que ela de fato provava era a **ausência de suporte a reenvio** — o
+    segundo envio colidia porque nada desativava o anterior. Assim que a TASK-040 introduziu a
+    desativação, os dois envios passaram a ter sucesso e o teste quebrou. A correção instala
+    uma barreira em `findNextVersion`, prendendo as duas chamadas depois de a transação abrir
+    e antes da inserção disputada. Ver `design.md` §5 e
+    `test/helpers/concurrent-transactions.ts`.
 
 - [ ] **TASK-040** · P0 · `submissions` · adiciona reenvio com incremento de versao
   - Requisitos: REQ-07.1, REQ-07.2, REQ-07.4
@@ -655,9 +661,12 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     de checagem — colisão de versão num vínculo que já tem envio ativo é conflito de
     concorrência, não erro de cálculo de versão.
 
-- [ ] **TASK-042** · P0 · `submissions` · cobre reenvios simultaneos com promise.all
+- [ ] **TASK-042** · P0 · `submissions` · cobre reenvios simultaneos com barreira de transacao
   - Requisitos: REQ-07.5, REQ-07.6
   - Depende de: TASK-041
+  - **Usa `test/helpers/concurrent-transactions.ts`**, extraído na correção da TASK-039. Não
+    reinventar com `Promise.all`: o helper existe porque essa abordagem produz falso positivo
+    silencioso, e a TASK-042 corre exatamente o mesmo risco. Ver `design.md` §5.
   - Aceite: exatamente uma submission ativa, `version` sem buraco, e um 409 identificando
     `CONCURRENT_SUBMISSION`
   - Teste: `submissions.concurrency.integration.spec.ts` → "persiste exatamente um de dois

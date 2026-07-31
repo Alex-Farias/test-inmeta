@@ -908,9 +908,9 @@ em Jest + Testcontainers.
 
 Nenhum destes é opcional. Cada um prova um critério que o enunciado destaca:
 
-1. **Reenvios simultâneos com `Promise.all`** — exatamente uma submission ativa, `version`
-   sem buraco, e um 409 identificando `CONCURRENT_SUBMISSION` e não outro conflito (D-14).
-   Prova REQ-07.5 e REQ-07.6.
+1. **Reenvios simultâneos com barreira de transação** — exatamente uma submission ativa,
+   `version` sem buraco, e um 409 identificando `CONCURRENT_SUBMISSION` e não outro conflito
+   (D-14). Prova REQ-07.5 e REQ-07.6.
 2. **Rollback do vínculo em lote** — falha no meio não deixa vínculo parcial. Prova REQ-03.2
    e REQ-15.2.
 3. **Soft delete refletido** — colaborador removido some de pendentes e do denominador das
@@ -918,6 +918,20 @@ Nenhum destes é opcional. Cada um prova um critério que o enunciado destaca:
 4. **Coerência da pendência derivada** — após envio, reenvio, remoção de envio e soft delete,
    a listagem de pendentes reflete exatamente o estado real das submissions.
    Prova REQ-15.4.
+
+### Como se testa concorrência aqui
+
+Testes de concorrência usam **barreira explícita de transação** — abrir conexões próprias,
+`BEGIN` antes de qualquer escrita, sincronizar manualmente o ponto de overlap. Nunca usar
+apenas `Promise.all` sobre chamadas de service/repository: sob execução rápida em
+`READ COMMITTED`, as transações costumam não se sobrepor de verdade, e o teste passa por
+motivo errado — como ocorreu na primeira versão de TASK-039, que testava ausência de suporte
+a reenvio, não concorrência.
+
+O ferramental está em `test/helpers/concurrent-transactions.ts`. A barreira é posicionada
+**depois** de a transação abrir e **antes** da escrita disputada; se algum participante não
+chegar, ela nunca libera e o teste estoura por timeout, que é a falha barulhenta que se quer
+— sobreposição presumida e não ocorrida deve quebrar, não passar.
 
 O teste 4 substitui o que, sob a decisão original de D-03, teria sido um teste de coerência
 da coluna `status`. Com pendência derivada não há valor persistido a divergir; o que resta a
