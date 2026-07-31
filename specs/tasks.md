@@ -446,14 +446,16 @@ rodam.
   - Consolidada em **TASK-028**: mesma operação de lote, mesmo módulo, três asserções
     combinadas, e mesma natureza de preocupação — rejeição de entrada inválida.
 
-- [ ] **TASK-030** · P1 · `employee-documents` · adiciona desvinculacao com causa manual
+- [x] **TASK-030** · P1 · `employee-documents` · adiciona desvinculacao com causa manual
   - Requisitos: REQ-04.1, REQ-04.3, REQ-04.5
   - Depende de: TASK-026
   - Aceite: marca o vínculo como removido gravando `deletion_cause = 'MANUAL'`; vínculo já
     removido responde não encontrado
   - Teste: `employee-documents.repository.integration.spec.ts` → "grava causa MANUAL na
-    desvinculação"
-  - Commit: `feat(employee-documents)`
+    desvinculação"; adicionado também `employee-documents.service.spec.ts` → "responde não
+    encontrado para vínculo já removido" (REQ-04.5 não estava coberto pelo teste de
+    repositório sozinho)
+  - Commit: `feat(employee-documents)` · `2e22e05`
 
 ---
 
