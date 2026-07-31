@@ -7,6 +7,7 @@ import { DatabaseModule } from './database/database.module';
 import { DocumentTypesModule } from './modules/document-types/document-types.module';
 import { EmployeeDocumentsModule } from './modules/employee-documents/employee-documents.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { StatisticsModule } from './modules/statistics/statistics.module';
 import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
 import { RequestIdMiddleware } from './shared/http/request-id.middleware';
 import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
@@ -25,6 +26,7 @@ import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
     EmployeesModule,
     DocumentTypesModule,
     EmployeeDocumentsModule,
+    StatisticsModule,
   ],
   providers: [
     // Via APP_FILTER e nao `app.useGlobalFilters` em main.ts: assim o

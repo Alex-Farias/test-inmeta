@@ -1013,13 +1013,24 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 
 ## Estatísticas
 
-- [ ] **TASK-053** · P1 · `statistics` · adiciona agregacao de conformidade global
+- [x] **TASK-053** · P1 · `statistics` · adiciona agregacao de conformidade global
   - Requisitos: REQ-16.1, REQ-16.2, REQ-16.3
   - Depende de: TASK-048
   - Aceite: expõe `employeesFullyCompliantPercentage` e `documentsSubmittedPercentage`,
     nomeados sem ambiguidade, calculados em SQL (D-09)
   - Teste: `statistics.repository.integration.spec.ts` → "calcula os dois percentuais distintos"
   - Commit: `feat(statistics)`
+  - **Módulo novo, sem entidade própria.** `StatisticsRepository` acessa o schema por SQL
+    direto via `dataSource.query`/`manager.query` (D-10) — as duas leituras de D-09 num único
+    round-trip: `documents_submitted_percentage` agregado sobre a CTE `vinculo`,
+    `employees_fully_compliant_percentage` por subquery escalar sobre `por_colaborador`. Os
+    três `JOIN ... AND deleted_at IS NULL` do CTE são D-06.
+  - **`NULLIF` nas duas divisões desde já**, por ser como D-09 está escrita — verificado
+    subindo a aplicação contra o banco de dev vazio: `GET /statistics/overview` responde 200
+    com os dois campos em `0`, não erro. Não é a prova de REQ-16.6 (fica para a TASK-055,
+    que decide o valor e escreve o teste dedicado).
+  - Grafo de DI verificado subindo a aplicação (mesma prática de TASK-032/034):
+    `StatisticsModule` inicializa e `GET /statistics/overview` aparece mapeada.
 
 - [ ] **TASK-054** · P1 · `statistics` · exclui colaborador sem vinculo do denominador
   - Requisitos: REQ-16.4
