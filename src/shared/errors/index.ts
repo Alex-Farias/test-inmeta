@@ -4,3 +4,5 @@ export { ValidationError, type ValidationDetail } from './validation.error';
 export { BusinessRuleError } from './business-rule.error';
 export { DuplicatedResourceError } from './duplicated-resource.error';
 export { ConcurrentSubmissionError } from './concurrent-submission.error';
+export { VersionConflictError } from './version-conflict.error';
+export { traduzirViolacaoDeUnicidade } from './constraint-error-map';

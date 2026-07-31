@@ -13,6 +13,7 @@ import {
   DuplicatedResourceError,
   EntityNotFoundError,
   ValidationError,
+  VersionConflictError,
 } from '../errors';
 import { DomainExceptionFilter } from './domain-exception.filter';
 
@@ -60,6 +61,7 @@ const mapeamento: ReadonlyArray<[string, () => DomainError, HttpStatus]> = [
   ['BusinessRuleError', () => new BusinessRuleError(), HttpStatus.UNPROCESSABLE_ENTITY],
   ['DuplicatedResourceError', () => new DuplicatedResourceError(), HttpStatus.CONFLICT],
   ['ConcurrentSubmissionError', () => new ConcurrentSubmissionError(), HttpStatus.CONFLICT],
+  ['VersionConflictError', () => new VersionConflictError(), HttpStatus.CONFLICT],
 ];
 
 describe('DomainExceptionFilter', () => {
@@ -91,7 +93,49 @@ describe('DomainExceptionFilter', () => {
       ['BusinessRuleError', 422, 'BUSINESS_RULE_VIOLATION'],
       ['DuplicatedResourceError', 409, 'DUPLICATED_RESOURCE'],
       ['ConcurrentSubmissionError', 409, 'CONCURRENT_SUBMISSION'],
+      ['VersionConflictError', 409, 'VERSION_CONFLICT'],
     ]);
+  });
+
+  it('traduz 23505 não tratado pela mesma tabela dos services', () => {
+    // A rede de D-14. Nenhum modulo de cadastro tem `catch` proprio: um e-mail
+    // duplicado sobe cru do driver ate aqui, e sem esta traducao viraria 500.
+    const casos: Array<[string, string | undefined, number, string]> = [
+      ['uq_employees_email', 'uq_employees_email', 409, 'DUPLICATED_RESOURCE'],
+      ['uq_submission_active', 'uq_submission_active', 409, 'CONCURRENT_SUBMISSION'],
+      ['uq_submission_version', 'uq_submission_version', 409, 'VERSION_CONFLICT'],
+      ['sem nome de constraint', undefined, 409, 'DUPLICATED_RESOURCE'],
+    ];
+
+    const obtido = casos.map(([nome, constraint]) => {
+      const { host, capturado } = dublarHost();
+      filter.catch(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          ...(constraint === undefined ? {} : { constraint }),
+        }),
+        host,
+      );
+      return [nome, capturado.status, capturado.corpo.error];
+    });
+
+    expect(obtido).toEqual(casos.map(([nome, , status, codigo]) => [nome, status, codigo]));
+  });
+
+  it('não registra 23505 traduzido como falha não prevista', () => {
+    // Depois de traduzido ele e erro de dominio, nao surpresa: logar a stack
+    // encheria a saida de producao com o caminho mais banal da API.
+    const { host } = dublarHost();
+
+    filter.catch(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'uq_employees_email',
+      }),
+      host,
+    );
+
+    expect(registrarErro).not.toHaveBeenCalled();
   });
 
   it('responde no mesmo formato qualquer que seja a origem da falha', () => {
@@ -149,12 +193,24 @@ describe('DomainExceptionFilter', () => {
 
   it('responde 500 genérico sem expor stack', () => {
     // Um erro de driver realista: traz consulta, nome de tabela e constraint.
+    //
+    // Violacao de chave estrangeira, e nao mais de unicidade: a partir de D-14 o
+    // filter **traduz** `23505` pela tabela de constraints, entao aquele codigo
+    // deixou de ser um erro nao mapeado e nao serve mais de veiculo aqui. O que
+    // este caso prova — REQ-19.4, nenhum vestigio interno no corpo — nao mudou;
+    // mudou so o erro escolhido para prova-lo. O caminho do `23505` esta em
+    // "traduz 23505 nao tratado pela mesma tabela dos services".
     const erroDeDriver = Object.assign(
       new Error(
-        'duplicate key value violates unique constraint "uq_employees_email" — ' +
-          'INSERT INTO "employees"("email") VALUES ($1)',
+        'insert or update on table "employee_documents" violates foreign key ' +
+          'constraint "fk_employee_documents_employee" — ' +
+          'INSERT INTO "employee_documents"("employee_id") VALUES ($1)',
       ),
-      { code: '23505', table: 'employees', constraint: 'uq_employees_email' },
+      {
+        code: '23503',
+        table: 'employee_documents',
+        constraint: 'fk_employee_documents_employee',
+      },
     );
 
     const { host, capturado } = dublarHost();
@@ -166,11 +222,11 @@ describe('DomainExceptionFilter', () => {
     // O corpo inteiro serializado nao pode conter nenhum vestigio interno.
     const serializado = JSON.stringify(capturado.corpo);
     for (const vestigio of [
-      'uq_employees_email',
+      'fk_employee_documents_employee',
       'INSERT INTO',
-      'employees',
-      '23505',
-      'duplicate key',
+      'employee_documents',
+      '23503',
+      'foreign key',
       'at Object',
     ]) {
       expect(serializado).not.toContain(vestigio);

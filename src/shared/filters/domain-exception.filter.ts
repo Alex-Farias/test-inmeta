@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
-import { DomainError, ValidationError } from '../errors';
+import { DomainError, ValidationError, traduzirViolacaoDeUnicidade } from '../errors';
 
 /**
  * O unico lugar do sistema que sabe traduzir falha em status HTTP (D-08).
@@ -23,6 +23,7 @@ const STATUS_POR_CODIGO: Readonly<Record<string, HttpStatus>> = {
   BUSINESS_RULE_VIOLATION: HttpStatus.UNPROCESSABLE_ENTITY,
   DUPLICATED_RESOURCE: HttpStatus.CONFLICT,
   CONCURRENT_SUBMISSION: HttpStatus.CONFLICT,
+  VERSION_CONFLICT: HttpStatus.CONFLICT,
 };
 
 export interface CorpoDeErro {
@@ -79,14 +80,25 @@ export class DomainExceptionFilter implements ExceptionFilter {
   private montarCorpo(exception: unknown, requestId: string): CorpoDeErro {
     const timestamp = new Date().toISOString();
 
-    if (exception instanceof DomainError) {
+    // Rede para `23505` que chegue sem traducao previa (D-14). Vale para
+    // employees, document-types e qualquer modulo futuro: nenhum deles precisa
+    // de `catch` proprio, porque a mesma tabela do service de submissions cobre
+    // por aqui — o default dela e `DuplicatedResourceError`.
+    //
+    // Roda **antes** do ramo de DomainError, e nao depois, porque o resultado e
+    // um DomainError e precisa seguir exatamente o mesmo caminho: mesmo status,
+    // mesmo formato, e sem passar pelo registro de falha nao prevista.
+    const erro =
+      exception instanceof DomainError ? exception : traduzirViolacaoDeUnicidade(exception);
+
+    if (erro instanceof DomainError) {
       return {
-        statusCode: STATUS_POR_CODIGO[exception.code] ?? HttpStatus.INTERNAL_SERVER_ERROR,
-        error: exception.code,
-        message: exception.message,
+        statusCode: STATUS_POR_CODIGO[erro.code] ?? HttpStatus.INTERNAL_SERVER_ERROR,
+        error: erro.code,
+        message: erro.message,
         // Sexta chave, so em VALIDATION_ERROR (D-08). A ausencia e a norma.
-        ...(exception instanceof ValidationError && exception.details.length > 0
-          ? { details: exception.details }
+        ...(erro instanceof ValidationError && erro.details.length > 0
+          ? { details: erro.details }
           : {}),
         requestId,
         timestamp,

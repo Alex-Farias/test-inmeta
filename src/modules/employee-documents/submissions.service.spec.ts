@@ -1,6 +1,10 @@
 import type { EntityManager } from 'typeorm';
 
-import { ConcurrentSubmissionError, EntityNotFoundError } from '../../shared/errors';
+import {
+  ConcurrentSubmissionError,
+  EntityNotFoundError,
+  VersionConflictError,
+} from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { DocumentSubmission } from './domain/document-submission.entity';
 import { EmployeeDocument } from './domain/employee-document.entity';
@@ -86,9 +90,29 @@ describe('SubmissionsService', () => {
   it('traduz violação de unicidade em conflito de concorrência', async () => {
     // Dois primeiros envios simultaneos: o perdedor viola
     // `uq_submission_active` e receberia 500 cru sem a traducao.
-    create.mockRejectedValue(Object.assign(new Error('duplicate key'), { code: '23505' }));
+    create.mockRejectedValue(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'uq_submission_active',
+      }),
+    );
 
     await expect(service.enviar('vinculo-1')).rejects.toThrow(ConcurrentSubmissionError);
+  });
+
+  it('traduz colisão de versão em conflito de versão', async () => {
+    // Mesmo SQLSTATE, outra constraint, outro erro (D-14). Colisao em
+    // `uq_submission_version` e defeito de calculo — o numero proposto ja esta
+    // no historico — e repetir a requisicao nao resolve, ao contrario da
+    // corrida por `uq_submission_active`.
+    create.mockRejectedValue(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'uq_submission_version',
+      }),
+    );
+
+    await expect(service.enviar('vinculo-1')).rejects.toThrow(VersionConflictError);
   });
 
   it('não engole erro de banco que não seja violação de unicidade', async () => {

@@ -1,19 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-import { ConcurrentSubmissionError, EntityNotFoundError } from '../../shared/errors';
+import { EntityNotFoundError, traduzirViolacaoDeUnicidade } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { DocumentSubmission } from './domain/document-submission.entity';
 import { EmployeeDocumentsRepository } from './employee-documents.repository';
 import { SubmissionsRepository } from './submissions.repository';
-
-/** `SQLSTATE` de violacao de unicidade no Postgres. */
-const UNIQUE_VIOLATION = '23505';
-
-function ehViolacaoDeUnicidade(erro: unknown): boolean {
-  return typeof erro === 'object' && erro !== null && 'code' in erro
-    ? (erro as { code?: unknown }).code === UNIQUE_VIOLATION
-    : false;
-}
 
 @Injectable()
 export class SubmissionsService {
@@ -64,14 +55,16 @@ export class SubmissionsService {
         return this.repository.create(vinculo.id, version, manager);
       });
     } catch (erro) {
-      // Envios simultaneos para o mesmo vinculo: o perdedor viola
-      // `uq_submission_active` e receberia 500 cru sem esta traducao. A
-      // discriminacao por nome de constraint (D-14) chega na TASK-041 e estende
-      // este ponto, em vez de introduzi-lo do zero.
-      if (ehViolacaoDeUnicidade(erro)) {
-        throw new ConcurrentSubmissionError();
-      }
-      throw erro;
+      // Traduz aqui, e nao so no filter, para preservar o contrato de
+      // `DomainError` para **qualquer** chamador — inclusive os testes de
+      // integracao, que chamam o service direto e nunca passam por HTTP. A
+      // tabela e a mesma dos dois lados (D-14); o filter e rede, nao
+      // substituto.
+      //
+      // `null` significa que nao e `23505`: repropaga o original intacto, para
+      // nao mascarar queda de conexao como conflito.
+      const traduzido = traduzirViolacaoDeUnicidade(erro);
+      throw traduzido ?? erro;
     }
   }
 }

@@ -662,23 +662,32 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Requisitos: REQ-07.5, REQ-19.2
   - Depende de: TASK-040, TASK-006
   - Aceite: `uq_submission_active` → `ConcurrentSubmissionError` (409);
-    `uq_submission_version` → conflito de versão; demais unicidades →
-    `DuplicatedResourceError` (D-14)
-  - Teste: `unique-violation.mapper.spec.ts` → "discrimina conflito de ativo de conflito de versão"
-  - Commit: `feat(submissions)`
+    `uq_submission_version` → `VersionConflictError` (409); demais unicidades →
+    `DuplicatedResourceError` (409, default da tabela) (D-14)
+  - Teste: `constraint-error-map.spec.ts` → "discrimina conflito de ativo de conflito de versão"
+  - Commit: `feat(shared)`
+  - **Escopo `shared`, não `submissions`.** O dono da task continua sendo `submissions`, mas
+    seis dos oito arquivos de código são `src/shared/` — a classe de erro, a tabela e o
+    filter. `escopo = módulo` aponta para onde o código mora.
   - **Estende, não introduz.** A TASK-038 já traduz `23505` em `ConcurrentSubmissionError`,
     porque sem isso a corrida de dois primeiros envios devolveria 500 cru no intervalo entre
     as duas tasks. O que falta aqui é a discriminação por nome de constraint (D-14) e a
     extração do tratamento para um ponto único.
-  - **Cuidado medido na TASK-039, a considerar no desenho.** Na corrida de primeiro envio as
-    duas constraints podem ser violadas pela mesma inserção, e qual delas o Postgres reporta
-    depende da ordem em que ele checa os índices — não é garantia documentada. Sondado com
-    seis execuções: veio `uq_submission_active` em todas, provavelmente por ter sido criado
-    primeiro e ter OID menor. Hoje é indiferente, porque tudo mapeia para
-    `ConcurrentSubmissionError`; depois de D-14 os dois passam a produzir erros distintos, e
-    o teste da TASK-039 herdaria essa dependência. A discriminação não deve depender da ordem
-    de checagem — colisão de versão num vínculo que já tem envio ativo é conflito de
-    concorrência, não erro de cálculo de versão.
+  - **Escopo ampliado por três decisões**, todas registradas em `design.md`: classe
+    `VersionConflictError` própria (D-08, §4.6), tabela central em
+    `shared/errors/constraint-error-map.ts` em vez de lógica repetida por ponto de uso, e a
+    mesma tabela aplicada no service **e** no exception filter — este último como rede para
+    `23505` vindo de outros módulos, sem escrita neles (D-14).
+  - **Cuidado medido na TASK-039, resolvido por declaração e não por heurística.** Na corrida
+    de primeiro envio as duas constraints são violadas pela mesma inserção, e qual delas o
+    Postgres reporta é ordem de checagem interna. A alternativa de discriminação contextual
+    foi considerada e descartada — registro em `design.md`, D-14, "Alternativa descartada
+    (2)". A tabela ficou plana e a não-determinação está declarada em `design.md` §5, com a
+    correção consequente na asserção da TASK-039.
+  - **Um teste existente mudou de veículo, não de propósito.** "responde 500 genérico sem
+    expor stack" (`exception.filter.spec.ts`) usava um erro `23505` para provar REQ-19.4;
+    com a rede no filter, aquele código deixou de ser erro não mapeado. O caso passou a usar
+    violação de chave estrangeira (`23503`) e mantém todas as asserções de não vazamento.
 
 - [ ] **TASK-042** · P0 · `submissions` · cobre reenvios simultaneos com barreira de transacao
   - Requisitos: REQ-07.5, REQ-07.6

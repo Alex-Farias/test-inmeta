@@ -507,6 +507,7 @@ global. Controllers nunca lançam `HttpException`.
 | `BusinessRuleError` | 422 | Regra de domínio violada |
 | `DuplicatedResourceError` | 409 | Unicidade entre ativos |
 | `ConcurrentSubmissionError` | 409 | Reenvio concorrente perdedor |
+| `VersionConflictError` | 409 | Colisão em `uq_submission_version` — versão proposta já existe |
 | não mapeado | 500 | Log com stack e `requestId` |
 
 ```jsonc
@@ -738,17 +739,40 @@ declara ativa no histórico (REQ-08.3).
 mesmo `SQLSTATE 23505`, e D-08 exige código de erro próprio por classe de falha.
 
 **Decisão.** O tratamento lê o campo `constraint` do erro do driver e discrimina:
-`uq_submission_active` → `ConcurrentSubmissionError`; `uq_submission_version` → conflito de
-versão. Unicidades de `employees` e `document_types` → `DuplicatedResourceError`.
+`uq_submission_active` → `ConcurrentSubmissionError`; `uq_submission_version` →
+`VersionConflictError`. Unicidades de `employees` e `document_types` →
+`DuplicatedResourceError`.
 
-**Alternativa descartada.** Mapear todo `23505` para 409 genérico. Uma linha de código a
+A tabela é **plana e vive em um arquivo só** — `shared/errors/constraint-error-map.ts` — com
+dois consumidores: o service de submissions, que traduz antes de propagar ao chamador, e o
+exception filter global. Duplicá-la nos dois pontos significaria que uma constraint nova
+poderia ser mapeada em um e esquecida no outro, com sintoma de 500 intermitente dependente
+do caminho.
+
+**A terceira linha não tem task própria, e é de propósito.** "Demais unicidades →
+`DuplicatedResourceError`" é o **default** da tabela, alcançado pela rede no filter. Nenhum
+`catch` é escrito em `employees` ou `document-types`: a regra de módulo dono continua
+intacta, e a cobertura entra por infraestrutura compartilhada, onde o filter já é o ponto
+único de tradução de falha (D-08). Um e-mail duplicado sobe cru do driver e sai 409
+`DUPLICATED_RESOURCE` sem que aqueles módulos saibam que `23505` existe.
+
+**Alternativa descartada (1).** Mapear todo `23505` para 409 genérico. Uma linha de código a
 menos e perde informação diagnóstica exatamente no caminho mais difícil de reproduzir: um
 bug no cálculo de versão apareceria disfarçado de erro de concorrência, e a investigação
 começaria pelo lugar errado.
 
-**Consequência.** O mapeamento fica em um ponto único, junto do exception filter, e é
-verificável por teste — o teste de reenvio concorrente passa a asseverar *qual* conflito
-ocorreu, não apenas que houve um 409.
+**Alternativa descartada (2): discriminação contextual.** Uma versão anterior de TASK-041
+previa tratar colisão de versão em vínculo que *já tem envio ativo* como conflito de
+concorrência, para que a discriminação não dependesse da ordem em que o Postgres checa os
+índices. Descartada: esconderia a não-determinação dentro de uma heurística, e o preço seria
+uma regra que ninguém consegue reproduzir de cabeça ao ler um log. A tabela permanece plana e
+a não-determinação fica **declarada** — em §5 e na asserção de TASK-039 — em vez de
+compensada.
+
+**Consequência.** O mapeamento fica em um ponto único e é verificável por teste — o teste de
+reenvio concorrente passa a asseverar *qual* conflito ocorreu, não apenas que houve um 409.
+No único cenário em que as duas constraints são violadas pela mesma escrita, essa asserção
+aceita os dois erros; ver §5.
 
 ---
 
@@ -884,7 +908,15 @@ interpretável — sem ele, o leitor não sabe sobre qual base os 62,5% incidem 
 
 Formato de resposta e mapeamento em **D-08**. Códigos usados: `NOT_FOUND`,
 `VALIDATION_ERROR`, `BUSINESS_RULE_VIOLATION`, `DUPLICATED_RESOURCE`,
-`CONCURRENT_SUBMISSION`, `INTERNAL_ERROR`.
+`CONCURRENT_SUBMISSION`, `VERSION_CONFLICT`, `INTERNAL_ERROR`.
+
+`VERSION_CONFLICT` e `CONCURRENT_SUBMISSION` saem ambos como 409 e ainda assim são códigos
+distintos, porque respondem a perguntas diferentes do cliente e do plantonista.
+`CONCURRENT_SUBMISSION` é corrida legítima — dois clientes disputando o mesmo vínculo, e
+repetir a requisição resolve. `VERSION_CONFLICT` é **defeito de cálculo de versão**: o número
+proposto já está no histórico, e repetir não resolve nada. Sem esta sétima linha, esse bug
+apareceria disfarçado de erro de concorrência, e a investigação começaria pelo lugar errado —
+é o mesmo argumento de D-14, aqui do lado de quem lê a resposta.
 
 ---
 
@@ -932,6 +964,30 @@ O ferramental está em `test/helpers/concurrent-transactions.ts`. A barreira é 
 **depois** de a transação abrir e **antes** da escrita disputada; se algum participante não
 chegar, ela nunca libera e o teste estoura por timeout, que é a falha barulhenta que se quer
 — sobreposição presumida e não ocorrida deve quebrar, não passar.
+
+### O limite da discriminação de D-14
+
+A tabela de D-14 discrimina por nome de constraint, e isso é determinístico **exceto em um
+cenário**: a corrida de **primeiro** envio. Ali as duas inserções propõem `version = 1` e
+`is_active = true` sobre um vínculo sem envio nenhum, e a perdedora viola `uq_submission_active`
+e `uq_submission_version` na **mesma tentativa de escrita**. Qual das duas o Postgres reporta é
+ordem de checagem interna — não é contrato documentado, não é estável entre versões do servidor,
+e não é estável nem sob recriação dos índices, que muda os OIDs pelos quais eles são varridos.
+
+Esse é o **único** ponto do sistema em que a discriminação não é determinística, e a
+não-determinação é **inerente ao cenário, não falha na taxonomia**: as duas classes de erro
+estão de fato ambas corretas ali, porque as duas invariantes foram de fato ambas violadas. A
+taxonomia só seria culpada se dois erros disputassem uma única violação.
+
+A consequência prática é a asserção de TASK-039, que aceita qualquer um dos dois
+(`ConcurrentSubmissionError` ou `VersionConflictError`) para a transação perdedora. Assertar um
+tipo fixo ali acoplaria a suíte a um detalhe de implementação do servidor, e o teste passaria a
+quebrar por atualização de Postgres em vez de por regressão nossa. As demais asserções do caso —
+exatamente uma linha persiste, com `version = 1` e ativa — continuam exatas, e são elas que
+provam REQ-07.3.
+
+Fora dessa corrida a discriminação é exata: em reenvio há uma linha ativa preexistente, e a
+perdedora colide primeiro em `uq_submission_active` sem ter chance de propor uma versão repetida.
 
 O teste 4 substitui o que, sob a decisão original de D-03, teria sido um teste de coerência
 da coluna `status`. Com pendência derivada não há valor persistido a divergir; o que resta a
