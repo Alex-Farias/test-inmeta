@@ -777,13 +777,18 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
   - Teste: `type-removal.cascade.integration.spec.ts` → "cascata preserva submissions históricas"
   - Commit: `test(employee-documents)`
 
-- [ ] **TASK-062** · P1 · `employee-documents` · cobre isolamento do vinculo anterior no re-vinculo
-  - Requisitos: REQ-05.3, REQ-05.4
+- [ ] **TASK-062** · P1 · `employee-documents` · cobre isolamento e reinicio de versao no re-vinculo
+  - Requisitos: REQ-05.2, REQ-05.3, REQ-05.4
   - Depende de: TASK-035, TASK-044, TASK-048
   - Aceite: o vínculo anterior e seus envios seguem consultáveis, mas não contam para
-    pendência nem estatística
+    pendência nem estatística; e o novo vínculo inicia submissions em `version = 1`, sem
+    herdar a numeração do anterior
   - Teste: `employee-documents.integration.spec.ts` → "vínculo anterior não conta para pendência"
+    e "vínculo novo reinicia a numeração de versões"
   - Commit: `test(employee-documents)`
+  - **REQ-05.2 veio da TASK-035**, onde não era demonstrável: exige `document_submissions`,
+    que só nasce na TASK-037. As três facetas descrevem o mesmo cenário — vínculo recriado
+    após desvinculação — e agora são provadas juntas. Ver a nota em D-07.
 
 ---
 

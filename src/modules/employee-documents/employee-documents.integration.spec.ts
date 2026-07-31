@@ -105,5 +105,34 @@ describe('EmployeeDocumentsService (integration)', () => {
       const vinculos = await dataSource.getRepository(EmployeeDocument).find();
       expect(vinculos).toEqual([]);
     });
+
+    it('revincula par desvinculado sem acusar duplicidade', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+
+      const [anterior] = await service.vincular({
+        employeeId: ana.id,
+        documentTypeIds: [cpf.id],
+      });
+      await service.desvincular(anterior.id);
+
+      // O criterio de REQ-05.1 e sobre a operacao `vincular`, nao sobre o
+      // INSERT: a checagem de duplicidade de TASK-028 nao pode acusar o
+      // vinculo removido como conflito. E o que quebraria se
+      // `findActiveDocumentTypeIds` passasse a enxergar removidos.
+      const [novo] = await service.vincular({
+        employeeId: ana.id,
+        documentTypeIds: [cpf.id],
+      });
+
+      expect(novo.id).not.toBe(anterior.id);
+
+      const ativos = await dataSource.getRepository(EmployeeDocument).find();
+      expect(ativos).toHaveLength(1);
+      expect(ativos[0].id).toBe(novo.id);
+    });
   });
 });

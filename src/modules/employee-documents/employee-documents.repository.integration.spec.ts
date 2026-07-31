@@ -86,6 +86,38 @@ describe('EmployeeDocumentsRepository (integration)', () => {
     });
   });
 
+  describe('re-vínculo', () => {
+    it('cria vínculo novo após desvinculação', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+
+      const [anterior] = await repository.createMany(ana.id, [cpf.id]);
+      await repository.softDelete(anterior.id, 'MANUAL');
+
+      // `uq_employee_document_active` e parcial: a linha removida deixa de
+      // ocupar o slot de unicidade, entao o mesmo par insere de novo (D-07).
+      const [novo] = await repository.createMany(ana.id, [cpf.id]);
+
+      expect(novo.id).not.toBe(anterior.id);
+
+      // O vinculo anterior nao foi ressuscitado — sao duas linhas distintas,
+      // que e o que separa D-07 da alternativa de limpar `deleted_at`.
+      const linhas = await dataSource
+        .getRepository(EmployeeDocument)
+        .find({ withDeleted: true, where: { employeeId: ana.id, documentTypeId: cpf.id } });
+      expect(linhas).toHaveLength(2);
+
+      const porId = new Map(linhas.map((linha) => [linha.id, linha]));
+      expect(porId.get(anterior.id)?.deletedAt).not.toBeNull();
+      expect(porId.get(anterior.id)?.deletionCause).toBe('MANUAL');
+      expect(porId.get(novo.id)?.deletedAt).toBeNull();
+      expect(porId.get(novo.id)?.deletionCause).toBeNull();
+    });
+  });
+
   describe('softDeleteAllByEmployeeId', () => {
     it('remove todos os vínculos ativos do colaborador', async () => {
       const employees = dataSource.getRepository(Employee);

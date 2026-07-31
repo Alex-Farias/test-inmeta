@@ -482,6 +482,14 @@ tratamento especial — a linha removida não ocupa o slot de unicidade. REQ-05.
 recomeçando em 1) sai de graça, porque `version` é sequencial **por vínculo** e o vínculo é
 outro.
 
+**Onde cada metade é verificada.** REQ-05.1 é provado na TASK-035, contra o índice parcial e
+contra a checagem de duplicidade de `vincular`. REQ-05.2 **não** é provado ali: sair de graça
+é afirmação sobre o schema, e schema sem teste é promessa. Como `document_submissions` só
+nasce na TASK-037, a asserção vive na TASK-062, junto das outras duas facetas do mesmo
+cenário (REQ-05.3 e REQ-05.4). O intervalo é seguro porque nada entre TASK-036 e TASK-061
+toca o caminho de re-vínculo — a garantia é nova linha, nova FK, sequência vazia, não lógica
+de aplicação que aquelas tasks alcancem.
+
 ---
 
 ### D-08 — Erros de domínio agnósticos de HTTP
