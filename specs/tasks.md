@@ -850,13 +850,41 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - **Falsificado antes de commitar.** Retirado o `withDeleted` de `findAnyById`, os dois casos
     de remoção falham; o de id inexistente continua passando, porque não depende dele.
 
-- [ ] **TASK-046** · P0 · `submissions` · adiciona remocao do envio ativo
+- [x] **TASK-046** · P0 · `submissions` · adiciona remocao do envio ativo
   - Requisitos: REQ-08.1, REQ-08.2, REQ-08.3, REQ-08.6
   - Depende de: TASK-044
   - Aceite: marca `deleted_at` e `is_active = false`, **não** reativa versão anterior, e envio
     já removido responde não encontrado (D-13)
-  - Teste: `submissions.service.spec.ts` → "remove envio ativo sem reativar o anterior"
-  - Commit: `feat(submissions)`
+  - Teste: `submissions.service.spec.ts` → "remove envio ativo sem reativar o anterior", mais
+    "responde não encontrado para envio já removido" e "não tenta remover envio de vínculo
+    removido ou inexistente"; `submissions.repository.integration.spec.ts` →
+    `describe('softDeleteActive')`, cinco casos
+  - Commit: `feat(submissions)` · `98e237e`
+  - **Teste de integração acrescentado ao aceite.** O unitário declarado prova a
+    **ramificação** — que nada é reativado e que os dois `null` viram 404 — mas com o
+    repositório dublado ele passaria igual se o `UPDATE` gravasse só uma das duas colunas. As
+    duas juntas são a semântica da terceira linha da tabela de §4.3, e só a integração as vê
+    na linha. Fecha também o único método de repositório que nasceria sem cobertura contra
+    Postgres real.
+  - **`findSubmittableById`, o mesmo de `enviar`**, e não `findActiveById` como em
+    `desvincular`. Remover envio é caminho de **escrita**, e D-06 declara que a regra do JOIN
+    vale igual dos dois lados; REQ-14.8 manda 404 para escrita solicitada sobre registro
+    removido. Consequência aceita: o envio de um vínculo cujo colaborador foi removido não
+    pode mais ser removido — a operação de escrita fica indisponível junto com o resto da
+    cadeia.
+  - **O contraste com `consultarHistorico` está no mesmo arquivo, dois métodos abaixo.**
+    Vínculo removido: **ler** o histórico responde 200 (exceção declarada a REQ-14.2),
+    **escrever** nele responde 404. Não é inconsistência, é a regra e sua única exceção — e a
+    vizinhança dos dois métodos é o que torna isso legível para quem chega depois.
+  - **Não crítica, e isso é decisão registrada, não omissão** (D-04). `UPDATE` de linha única:
+    a atomicidade vem do statement, e abrir transação seria cerimônia sem garantia. É uma das
+    quatro linhas da tabela de operações não críticas que o enunciado cobra discriminar.
+  - **`active` no caminho, não o uuid da submission.** O envio removível é sempre o vigente
+    (REQ-08.1); uma rota por id convidaria a remover uma versão no meio do histórico, que
+    REQ-08.3 proíbe. A rota declara o alvo em vez de aceitar qualquer um e recusar depois.
+  - Suíte de integração ficou bloqueada na primeira tentativa — Docker Desktop sem integração
+    com a distro WSL, `Could not find a working container runtime strategy`. Nenhum commit foi
+    feito até ela rodar de fato.
 
 - [ ] **TASK-047** · P0 · `submissions` · nao reaproveita numero de versao apos remocao
   - Requisitos: REQ-08.4
