@@ -2,7 +2,27 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 
+import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DeletionCause, EmployeeDocument } from './domain/employee-document.entity';
+
+export interface VinculoPendente {
+  id: string;
+  employee: { id: string; name: string };
+  documentType: { id: string; name: string };
+}
+
+export interface PaginaDePendentes {
+  items: VinculoPendente[];
+  total: number;
+}
+
+interface LinhaDePendente {
+  vinculo_id: string;
+  colaborador_id: string;
+  colaborador_name: string;
+  tipo_id: string;
+  tipo_name: string;
+}
 
 @Injectable()
 export class EmployeeDocumentsRepository {
@@ -127,6 +147,76 @@ export class EmployeeDocumentsRepository {
       )
       .where('vinculo.id = :id', { id })
       .getOne();
+  }
+
+  /**
+   * Pendencia derivada (D-03, design §1.4): vinculo ativo, de colaborador ativo
+   * e tipo ativo, sem submission ativa. Traducao literal do SQL do design —
+   * `NOT EXISTS` contra `document_submissions`, servido por `uq_submission_active`
+   * sem indice adicional.
+   *
+   * Sem `vinculo.deleted_at IS NULL` explicito: o alias principal ja recebe o
+   * filtro automatico do `@DeleteDateColumn` (D-06). Os dois `innerJoin`, por
+   * nome de tabela como em `findSubmittableById`, repetem o filtro manualmente
+   * porque join manual e exatamente o que o filtro automatico nao alcanca —
+   * aqui e onde REQ-14.3/14.4 vazariam se um dos dois sumisse.
+   *
+   * Contagem via `.clone()` da mesma query, mesmos JOINs e mesmo `WHERE`: D-15
+   * exige que o total repita os filtros de remocao da consulta principal, e
+   * nao uma contagem simples de `employee_documents`.
+   *
+   * Ordena por `created_at` com desempate por `id` (D-15), mesma convencao de
+   * `EmployeesRepository.findAllActive`.
+   */
+  async findPending(
+    pagination: PaginationQueryDto,
+    manager?: EntityManager,
+  ): Promise<PaginaDePendentes> {
+    const base = this.repo(manager)
+      .createQueryBuilder('vinculo')
+      .innerJoin(
+        'employees',
+        'colaborador',
+        'colaborador.id = vinculo.employee_id AND colaborador.deleted_at IS NULL',
+      )
+      .innerJoin(
+        'document_types',
+        'tipo',
+        'tipo.id = vinculo.document_type_id AND tipo.deleted_at IS NULL',
+      )
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM document_submissions s
+          WHERE s.employee_document_id = vinculo.id
+            AND s.is_active
+            AND s.deleted_at IS NULL
+        )`,
+      );
+
+    const total = await base.clone().getCount();
+
+    const linhas = await base
+      .clone()
+      .select([
+        'vinculo.id AS vinculo_id',
+        'colaborador.id AS colaborador_id',
+        'colaborador.name AS colaborador_name',
+        'tipo.id AS tipo_id',
+        'tipo.name AS tipo_name',
+      ])
+      .orderBy('vinculo.created_at', 'ASC')
+      .addOrderBy('vinculo.id', 'ASC')
+      .offset((pagination.page - 1) * pagination.limit)
+      .limit(pagination.limit)
+      .getRawMany<LinhaDePendente>();
+
+    const items = linhas.map((linha) => ({
+      id: linha.vinculo_id,
+      employee: { id: linha.colaborador_id, name: linha.colaborador_name },
+      documentType: { id: linha.tipo_id, name: linha.tipo_name },
+    }));
+
+    return { items, total };
   }
 
   /**

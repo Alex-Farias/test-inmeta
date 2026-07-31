@@ -1,8 +1,19 @@
-import { Body, Controller, Delete, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 
+import { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { CreateEmployeeDocumentsDto } from './dto/create-employee-documents.dto';
-import { EmployeeDocumentsService } from './employee-documents.service';
+import { EmployeeDocumentsService, ListaPaginadaDePendentes } from './employee-documents.service';
 
 @Controller('employee-documents')
 export class EmployeeDocumentsController {
@@ -11,6 +22,11 @@ export class EmployeeDocumentsController {
   @Post()
   vincular(@Body() dto: CreateEmployeeDocumentsDto): Promise<EmployeeDocument[]> {
     return this.service.vincular(dto);
+  }
+
+  @Get('pending')
+  listarPendentes(@Query() pagination: PaginationQueryDto): Promise<ListaPaginadaDePendentes> {
+    return this.service.listarPendentes(pagination);
   }
 
   @Delete(':id')

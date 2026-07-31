@@ -4,8 +4,10 @@ import { DataSource } from 'typeorm';
 import { CreateEmployees1785416355470 } from '../../database/migrations/1785416355470-CreateEmployees';
 import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785446317559-CreateDocumentTypes';
 import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/1785453770311-CreateEmployeeDocuments';
+import { CreateDocumentSubmissions1785470132175 } from '../../database/migrations/1785470132175-CreateDocumentSubmissions';
 import { DocumentType } from '../document-types/domain/document-type.entity';
 import { Employee } from '../employees/domain/employee.entity';
+import { DocumentSubmission } from './domain/document-submission.entity';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { EmployeeDocumentsRepository } from './employee-documents.repository';
 
@@ -24,11 +26,12 @@ describe('EmployeeDocumentsRepository (integration)', () => {
       username: container.getUsername(),
       password: container.getPassword(),
       database: container.getDatabase(),
-      entities: [Employee, DocumentType, EmployeeDocument],
+      entities: [Employee, DocumentType, EmployeeDocument, DocumentSubmission],
       migrations: [
         CreateEmployees1785416355470,
         CreateDocumentTypes1785446317559,
         CreateEmployeeDocuments1785453770311,
+        CreateDocumentSubmissions1785470132175,
       ],
       synchronize: false,
     });
@@ -43,7 +46,9 @@ describe('EmployeeDocumentsRepository (integration)', () => {
   });
 
   afterEach(async () => {
-    await dataSource.query('TRUNCATE TABLE employee_documents, employees, document_types');
+    await dataSource.query(
+      'TRUNCATE TABLE document_submissions, employee_documents, employees, document_types',
+    );
   });
 
   describe('migration', () => {
@@ -228,6 +233,56 @@ describe('EmployeeDocumentsRepository (integration)', () => {
       // cascata nao reprocessa linha ja removida.
       expect(porId.get(anaCpf.id)?.deletionCause).toBe('MANUAL');
       expect(porId.get(brunoCpf.id)?.deletionCause).toBe('TYPE_REMOVED');
+    });
+  });
+
+  describe('findPending', () => {
+    it('exclui vínculo com envio ativo', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const semHistorico = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+      const comHistoricoRemovido = await documentTypes.save(documentTypes.create({ name: 'RG' }));
+      const comEnvioAtivo = await documentTypes.save(documentTypes.create({ name: 'CTPS' }));
+
+      const [vinculoSemHistorico] = await repository.createMany(ana.id, [semHistorico.id]);
+      const [vinculoComHistoricoRemovido] = await repository.createMany(ana.id, [
+        comHistoricoRemovido.id,
+      ]);
+      const [vinculoComEnvioAtivo] = await repository.createMany(ana.id, [comEnvioAtivo.id]);
+
+      // Pendente com historico (D-13, nota da TASK-047): envio existiu e foi
+      // desativado, mas nenhum envio ativo restou — ainda e pendente. Falsifica
+      // um `NOT EXISTS` que esquecesse o `is_active`.
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoComHistoricoRemovido.id,
+          version: 1,
+          isActive: false,
+          submittedAt: new Date(),
+        }),
+      );
+
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoComEnvioAtivo.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(),
+        }),
+      );
+
+      const pagina = await repository.findPending({ page: 1, limit: 20 });
+
+      expect(pagina.total).toBe(2);
+      const idsPendentes = pagina.items.map((item) => item.id).sort();
+      expect(idsPendentes).toEqual([vinculoSemHistorico.id, vinculoComHistoricoRemovido.id].sort());
+
+      const item = pagina.items.find((i) => i.id === vinculoSemHistorico.id);
+      expect(item?.employee).toEqual({ id: ana.id, name: 'Ana' });
+      expect(item?.documentType).toEqual({ id: semHistorico.id, name: 'CPF' });
     });
   });
 });

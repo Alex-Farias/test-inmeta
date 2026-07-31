@@ -4,10 +4,18 @@ import type { EntityManager } from 'typeorm';
 import { DocumentTypesService } from '../document-types/document-types.service';
 import { EmployeesService } from '../employees/employees.service';
 import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
+import type { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { CreateEmployeeDocumentsDto } from './dto/create-employee-documents.dto';
-import { EmployeeDocumentsRepository } from './employee-documents.repository';
+import { EmployeeDocumentsRepository, VinculoPendente } from './employee-documents.repository';
+
+export interface ListaPaginadaDePendentes {
+  items: VinculoPendente[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 @Injectable()
 export class EmployeeDocumentsService {
@@ -90,5 +98,14 @@ export class EmployeeDocumentsService {
    */
   async removerVinculosDoTipo(documentTypeId: string, manager?: EntityManager): Promise<void> {
     await this.repository.softDeleteAllByDocumentTypeId(documentTypeId, 'TYPE_REMOVED', manager);
+  }
+
+  /**
+   * REQ-10.1, REQ-10.5, REQ-10.6: pendencia derivada (D-03), sem filtro ainda
+   * — colaborador/tipo entram na TASK-049.
+   */
+  async listarPendentes(pagination: PaginationQueryDto): Promise<ListaPaginadaDePendentes> {
+    const { items, total } = await this.repository.findPending(pagination);
+    return { items, total, page: pagination.page, limit: pagination.limit };
   }
 }
