@@ -191,4 +191,71 @@ describe('SubmissionsService (integration)', () => {
       await esperarRecusa(vinculo.id);
     });
   });
+
+  /**
+   * REQ-09.4, REQ-09.5 e REQ-14.6 — a **excecao declarada a REQ-14.2**, e a
+   * unica do sistema (design 4.3).
+   *
+   * O contraste com o `describe` acima e o ponto: para **enviar**, vinculo ou
+   * colaborador removido da 404 (TASK-043); para **consultar o historico**, os
+   * mesmos estados dao 200 com o historico completo. Sao dois metodos com
+   * proposito oposto sobre a mesma tabela — `findSubmittableById` e
+   * `findAnyById` —, e trocar um pelo outro quebraria um requisito em silencio.
+   */
+  describe('histórico após remoção', () => {
+    const paginacao = { page: 1, limit: 20 };
+
+    it('histórico segue acessível após remoção do colaborador', async () => {
+      const vinculo = await criarVinculo('Contrato');
+      await service.enviar(vinculo.id);
+      await service.enviar(vinculo.id);
+
+      // Colaborador e vinculo removidos, como a cascata de TASK-032 os deixaria.
+      await dataSource
+        .getRepository(Employee)
+        .update({ id: vinculo.employeeId }, { deletedAt: new Date() });
+      await dataSource
+        .getRepository(EmployeeDocument)
+        .update({ id: vinculo.id }, { deletedAt: new Date(), deletionCause: 'EMPLOYEE_REMOVED' });
+
+      const historico = await service.consultarHistorico(vinculo.id, paginacao);
+
+      // REQ-09.5: o historico nao encolhe nem muda por causa da remocao do pai.
+      expect(historico.total).toBe(2);
+      expect(historico.items.map((envio) => envio.version)).toEqual([2, 1]);
+
+      // E o que prova a **ausencia de cascata** ate `document_submissions`: se
+      // algo propagasse ate la, estes `deletedAt` estariam preenchidos e a
+      // terceira linha da tabela de 4.3 passaria a significar outra coisa.
+      expect(historico.items.every((envio) => envio.deletedAt === null)).toBe(true);
+      expect(historico.items[0].isActive).toBe(true);
+    });
+
+    it('histórico segue acessível após remoção do vínculo', async () => {
+      const vinculo = await criarVinculo('Termo');
+      await service.enviar(vinculo.id);
+
+      await dataSource
+        .getRepository(EmployeeDocument)
+        .update({ id: vinculo.id }, { deletedAt: new Date(), deletionCause: 'MANUAL' });
+
+      const historico = await service.consultarHistorico(vinculo.id, paginacao);
+
+      // REQ-09.4. Note o contraste com `enviar`, que recusa este mesmo vinculo.
+      expect(historico.total).toBe(1);
+      expect(historico.items[0].version).toBe(1);
+
+      await expect(service.enviar(vinculo.id)).rejects.toThrow(EntityNotFoundError);
+    });
+
+    it('responde não encontrado para vínculo que nunca existiu', async () => {
+      // O que `findAnyById` compra sobre consultar as submissions direto:
+      // removido devolve historico, inexistente devolve 404. Sem a distincao,
+      // uuid digitado errado responderia 200 com pagina vazia, afirmando que o
+      // vinculo existe e nao tem envios.
+      await expect(
+        service.consultarHistorico('9d2f8c31-4a07-4b62-8e15-7c3b0a6d5e94', paginacao),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+  });
 });

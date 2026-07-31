@@ -41,9 +41,46 @@ export class EmployeeDocumentsRepository {
     return vinculos.map((vinculo) => vinculo.documentTypeId);
   }
 
+  /**
+   * ── Os tres `find...ById`, e o que separa um do outro ──────────────────────
+   *
+   * Sao tres de proposito, com visibilidades diferentes de `deleted_at`. Antes
+   * de escrever um quarto, confira se um destes ja serve:
+   *
+   * | Metodo                | Enxerga                                  | Serve   |
+   * |-----------------------|------------------------------------------|---------|
+   * | `findActiveById`      | vinculo ativo                            | REQ-04.5|
+   * | `findSubmittableById` | + colaborador e tipo ativos, via JOIN    | REQ-06.5|
+   * | `findAnyById`         | qualquer vinculo que ja existiu          | REQ-09.4|
+   *
+   * A ordem e de rigor decrescente. `findSubmittableById` e o mais restritivo
+   * porque escrever exige cadeia ativa (D-06); `findAnyById` e o mais permissivo
+   * porque o historico e a excecao declarada a REQ-14.2 e precisa responder
+   * sobre registro removido. Trocar um pelo outro nao da erro de compilacao e
+   * quebra um requisito em silencio — dai a tabela.
+   * ───────────────────────────────────────────────────────────────────────────
+   */
+
   /** `null` tanto para inexistente quanto para removido (D-08, REQ-04.5). */
   findActiveById(id: string, manager?: EntityManager): Promise<EmployeeDocument | null> {
     return this.repo(manager).findOneBy({ id });
+  }
+
+  /**
+   * Vinculo que **ja existiu**, ativo ou removido (REQ-09.4, REQ-14.6).
+   *
+   * `withDeleted` desliga o filtro do `@DeleteDateColumn`, e aqui isso e o
+   * requisito: o historico responde sobre vinculo removido, e usar
+   * `findActiveById` daria 404 exatamente nos casos que REQ-09.4 manda atender.
+   *
+   * O que ele **nao** faz e apagar a distincao entre removido e inexistente.
+   * Vinculo removido devolve a linha, e o historico sai; id que nunca existiu
+   * devolve `null`, e o service traduz em 404. Sem esta consulta o unico caminho
+   * seria responder 200 com pagina vazia para uuid digitado errado, afirmando
+   * que o vinculo existe e nao tem envios.
+   */
+  findAnyById(id: string, manager?: EntityManager): Promise<EmployeeDocument | null> {
+    return this.repo(manager).findOne({ where: { id }, withDeleted: true });
   }
 
   /**

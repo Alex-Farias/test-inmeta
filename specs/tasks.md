@@ -823,10 +823,32 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 - [ ] **TASK-045** · P0 · `submissions` · mantem historico acessivel apos remocao
   - Requisitos: REQ-09.4, REQ-09.5, REQ-14.6
   - Depende de: TASK-044, TASK-032
-  - Aceite: histórico segue consultável após remoção do vínculo e do colaborador
+  - Aceite, os três casos que `findAnyById` distingue:
+    - vínculo **removido** → 200 com o histórico completo (REQ-09.4)
+    - vínculo **ativo** → 200 com o histórico completo
+    - id que **nunca existiu** → 404, não página vazia
   - Teste: `submissions.integration.spec.ts` → "histórico segue acessível após remoção do
-    colaborador"
+    colaborador", "histórico segue acessível após remoção do vínculo" e "responde não
+    encontrado para vínculo que nunca existiu"
   - Commit: `feat(submissions)`
+  - **Aceite ampliado.** A redação original cobria só o caso que motivou a task — histórico
+    após remoção. Os três casos saem do mesmo método e o terceiro é o que justifica
+    `findAnyById` existir: sem ele bastaria consultar as submissions direto, e um uuid
+    digitado errado responderia 200 com página vazia, afirmando que o vínculo existe.
+  - **Terceiro `find...ById` do repositório, e por isso a tabela-índice.** `findActiveById`
+    (REQ-04.5), `findSubmittableById` (REQ-06.5) e `findAnyById` (REQ-09.4) têm visibilidades
+    diferentes de `deleted_at`, em ordem de rigor decrescente. Trocar um pelo outro não dá
+    erro de compilação e quebra um requisito em silêncio — o comentário-índice fica acima dos
+    três para que um quarto não nasça reimplementando um deles.
+  - **Contraste deliberado com a TASK-043**, no mesmo arquivo de teste: para **enviar**,
+    vínculo ou colaborador removido dá 404; para **consultar o histórico**, os mesmos estados
+    dão 200. É a exceção declarada a REQ-14.2, e os dois `describe` vizinhos a tornam legível.
+  - **Prova a ausência de cascata até `document_submissions`.** O caso do colaborador removido
+    assere que os envios seguem com `deletedAt: null`. Se alguma propagação alcançasse a
+    tabela, o histórico encolheria e a terceira linha da tabela de §4.3 passaria a significar
+    outra coisa.
+  - **Falsificado antes de commitar.** Retirado o `withDeleted` de `findAnyById`, os dois casos
+    de remoção falham; o de id inexistente continua passando, porque não depende dele.
 
 - [ ] **TASK-046** · P0 · `submissions` · adiciona remocao do envio ativo
   - Requisitos: REQ-08.1, REQ-08.2, REQ-08.3, REQ-08.6

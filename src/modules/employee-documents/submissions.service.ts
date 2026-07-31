@@ -92,13 +92,23 @@ export class SubmissionsService {
    * `findSubmittableById` recusaria exatamente os casos que REQ-09.4 e REQ-09.5
    * exigem atender.
    *
-   * O 404 para vinculo que **nunca existiu** — distinto de removido — entra na
-   * TASK-045, com `findAnyById`. Ate la um id desconhecido devolve pagina vazia.
+   * Mas resolve o vinculo por `findAnyById`, que enxerga removidos, e isso e o
+   * que separa **removido** de **nunca existiu**. Sem ele a alternativa seria
+   * responder 200 com pagina vazia para um uuid digitado errado, afirmando que o
+   * vinculo existe e nao tem envios — o 404 e a resposta honesta.
+   *
+   * Tres casos, um metodo: removido devolve 200 com o historico completo, ativo
+   * devolve 200 com o historico completo, inexistente devolve 404.
    */
   async consultarHistorico(
     employeeDocumentId: string,
     pagination: PaginationQueryDto,
   ): Promise<HistoricoDeEnvios> {
+    const vinculo = await this.employeeDocumentsRepository.findAnyById(employeeDocumentId);
+    if (!vinculo) {
+      throw new EntityNotFoundError('Vinculo nao encontrado.');
+    }
+
     const { items, total } = await this.repository.findHistory(employeeDocumentId, pagination);
 
     return { items, total, page: pagination.page, limit: pagination.limit };
