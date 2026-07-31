@@ -702,7 +702,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     com a rede no filter, aquele código deixou de ser erro não mapeado. O caso passou a usar
     violação de chave estrangeira (`23503`) e mantém todas as asserções de não vazamento.
 
-- [ ] **TASK-042** · P0 · `submissions` · cobre reenvios simultaneos com barreira de transacao
+- [x] **TASK-042** · P0 · `submissions` · cobre reenvios simultaneos com barreira de transacao
   - Requisitos: REQ-07.5, REQ-07.6
   - Depende de: TASK-041
   - **Usa `test/helpers/concurrent-transactions.ts`**, extraído na correção da TASK-039. Não
@@ -712,7 +712,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     `CONCURRENT_SUBMISSION`
   - Teste: `submissions.concurrency.integration.spec.ts` → "persiste exatamente um de dois
     reenvios simultâneos"
-  - Commit: `test(submissions)`
+  - Commit: `test(submissions)` · `9ec3952`
   - **A barreira vai em `deactivateActive`, não em `findNextVersion`.** Copiar a posição da
     TASK-039 travaria a suíte: no reenvio a primeira escrita é o `UPDATE` que desativa a
     versão ativa, e ele toma lock de linha. A primeira transação passaria pelo `UPDATE` e só
