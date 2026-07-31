@@ -918,13 +918,17 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 
 ## Listagem de pendentes
 
-- [ ] **TASK-048** · P1 · `employee-documents` · adiciona listagem de pendentes derivada
+- [x] **TASK-048** · P1 · `employee-documents` · adiciona listagem de pendentes derivada
   - Requisitos: REQ-10.1, REQ-10.5, REQ-10.6, REQ-11.1
   - Depende de: TASK-038, TASK-011
   - Aceite: lista vínculos ativos sem envio ativo via `NOT EXISTS` (D-03), identificando
     colaborador e tipo, paginado com total
   - Teste: `employee-documents.repository.integration.spec.ts` → "exclui vínculo com envio ativo"
-  - Commit: `feat(employee-documents)`
+  - Commit: `feat(employee-documents)` · `aaa587d`
+  - **Teste com três vínculos, não dois.** Além do que exclui envio ativo, inclui um vínculo
+    com submission **inativa** (histórico sem envio ativo) — é o estado que a nota da
+    TASK-047 registrou como válido e sem cobertura até aqui, e falsifica um `NOT EXISTS` que
+    esquecesse o `is_active` (excluiria também quem só tem histórico).
 
 - [ ] **TASK-049** · P1 · `employee-documents` · adiciona filtros de pendentes por colaborador e tipo
   - Requisitos: REQ-10.2, REQ-10.3, REQ-10.4
