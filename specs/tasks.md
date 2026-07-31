@@ -941,13 +941,27 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     "filtra por colaborador" e "filtra por tipo", isolando cada um (REQ-10.2, REQ-10.3), mesmo
     padrão de expansão da TASK-028/030/043.
 
-- [ ] **TASK-050** · P1 · `employee-documents` · retorna vazio para filtro com registro removido
+- [x] **TASK-050** · P1 · `employee-documents` · retorna vazio para filtro com registro removido
   - Requisitos: REQ-10.7
   - Depende de: TASK-049
   - Aceite: "SE um filtro referenciar colaborador ou tipo de documento inexistente ou
     removido, ENTÃO o sistema DEVE retornar resultado vazio, e não erro"
   - Teste: `employee-documents.service.spec.ts` → "retorna vazio para filtro com tipo removido"
-  - Commit: `feat(employee-documents)`
+  - Commit: `test(employee-documents)` · `581d926`
+  - **Sem código de produção novo — a garantia já existia por construção desde a TASK-049**,
+    mesmo padrão de TASK-018/019/027/035: `WHERE vinculo.employee_id = :employeeId` não casa
+    nenhuma linha para id inexistente, e o `innerJoin` com `deleted_at IS NULL` (D-06) exclui
+    o vínculo mesmo que a cascata (TASK-032/034) não o tenha marcado. Re-escopado de `feat`
+    para `test`.
+  - **O teste declarado, sozinho, não prova o requisito.** `employee-documents.service.spec.ts`
+    mocka o repositório: prova que o service não valida existência via
+    `EmployeesService`/`DocumentTypesService` antes de filtrar (o que lançaria
+    `EntityNotFoundError` exatamente no caso que REQ-10.7 manda tratar em silêncio), mas
+    passaria igual com qualquer `findPending`, inclusive um quebrado. Adicionado
+    `employee-documents.repository.integration.spec.ts` → `findPending` → "filtro para
+    registro removido ou inexistente", com dois casos: colaborador removido **direto pelo
+    `DataSource`** (bypassa a cascata, mesma técnica de TASK-043/045, para isolar a defesa do
+    JOIN) e id que nunca existiu.
 
 - [ ] **TASK-051** · P0 · `employee-documents` · cobre coerencia da pendencia derivada
   - Requisitos: REQ-15.4
