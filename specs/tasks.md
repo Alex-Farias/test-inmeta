@@ -658,14 +658,19 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     "simultâneos" sem sobreposição real passam a ser envio + reenvio legítimos, e o teste
     antigo — que dependia de `Promise.all` — falhou. A correção veio antes, em `dcca316`.
 
-- [ ] **TASK-041** · P0 · `submissions` · traduz violacao de unicidade discriminando a constraint
+- [x] **TASK-041** · P0 · `submissions` · traduz violacao de unicidade discriminando a constraint
   - Requisitos: REQ-07.5, REQ-19.2
   - Depende de: TASK-040, TASK-006
   - Aceite: `uq_submission_active` → `ConcurrentSubmissionError` (409);
     `uq_submission_version` → `VersionConflictError` (409); demais unicidades →
     `DuplicatedResourceError` (409, default da tabela) (D-14)
-  - Teste: `constraint-error-map.spec.ts` → "discrimina conflito de ativo de conflito de versão"
-  - Commit: `feat(shared)`
+  - Teste: `constraint-error-map.spec.ts` → "discrimina conflito de ativo de conflito de versão",
+    mais "cai no default para unicidade não reconhecida", "devolve nulo para erro que não é
+    23505" e "lê a constraint do driverError quando o erro vem embrulhado";
+    `submissions.service.spec.ts` → "traduz colisão de versão em conflito de versão";
+    `exception.filter.spec.ts` → "traduz 23505 não tratado pela mesma tabela dos services" e
+    "não registra 23505 traduzido como falha não prevista", que são o que prova a rede
+  - Commit: `feat(shared)` · `ca42823`
   - **Escopo `shared`, não `submissions`.** O dono da task continua sendo `submissions`, mas
     seis dos oito arquivos de código são `src/shared/` — a classe de erro, a tabela e o
     filter. `escopo = módulo` aponta para onde o código mora.
