@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 
-import { EmployeeDocument } from './domain/employee-document.entity';
+import { DeletionCause, EmployeeDocument } from './domain/employee-document.entity';
 
 @Injectable()
 export class EmployeeDocumentsRepository {
@@ -39,5 +39,22 @@ export class EmployeeDocumentsRepository {
       where: { employeeId, documentTypeId: In(documentTypeIds) },
     });
     return vinculos.map((vinculo) => vinculo.documentTypeId);
+  }
+
+  /** `null` tanto para inexistente quanto para removido (D-08, REQ-04.5). */
+  findActiveById(id: string, manager?: EntityManager): Promise<EmployeeDocument | null> {
+    return this.repo(manager).findOneBy({ id });
+  }
+
+  /**
+   * Uma unica instrucao para `deleted_at` e `deletion_cause`: o `CHECK
+   * ck_employee_documents_deletion_cause` (D-12) amarra as duas colunas, e
+   * grava-las em passos separados abriria uma janela em que a linha viola a
+   * propria invariante que o `CHECK` existe para impedir. Recebe `cause` em
+   * vez de fixar `'MANUAL'` porque a cascata de remocao de tipo (TASK-033)
+   * reusa este mesmo metodo com `'TYPE_REMOVED'`.
+   */
+  async softDelete(id: string, cause: DeletionCause, manager?: EntityManager): Promise<void> {
+    await this.repo(manager).update({ id }, { deletedAt: new Date(), deletionCause: cause });
   }
 }

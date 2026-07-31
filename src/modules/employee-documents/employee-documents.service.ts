@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { DocumentTypesService } from '../document-types/document-types.service';
 import { EmployeesService } from '../employees/employees.service';
-import { DuplicatedResourceError } from '../../shared/errors';
+import { DuplicatedResourceError, EntityNotFoundError } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { EmployeeDocument } from './domain/employee-document.entity';
 import { CreateEmployeeDocumentsDto } from './dto/create-employee-documents.dto';
@@ -44,5 +44,19 @@ export class EmployeeDocumentsService {
     return this.transactionRunner.run((manager) =>
       this.repository.createMany(dto.employeeId, dto.documentTypeIds, manager),
     );
+  }
+
+  /**
+   * Desvinculação é não crítica (D-04): escrita de linha única, e o `CHECK`
+   * de D-12 garante a invariante entre `deleted_at`/`deletion_cause` por DDL
+   * — sem `TransactionRunner` aqui, ao contrário de `vincular`.
+   */
+  async desvincular(id: string): Promise<void> {
+    const vinculo = await this.repository.findActiveById(id);
+    if (!vinculo) {
+      throw new EntityNotFoundError('Vinculo nao encontrado.');
+    }
+
+    await this.repository.softDelete(vinculo.id, 'MANUAL');
   }
 }

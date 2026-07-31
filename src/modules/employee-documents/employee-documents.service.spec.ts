@@ -9,6 +9,8 @@ import { EmployeeDocumentsService } from './employee-documents.service';
 describe('EmployeeDocumentsService', () => {
   let createMany: jest.Mock;
   let findActiveDocumentTypeIds: jest.Mock;
+  let findActiveById: jest.Mock;
+  let softDelete: jest.Mock;
   let run: jest.Mock;
   let employeesFindById: jest.Mock;
   let documentTypesFindById: jest.Mock;
@@ -17,9 +19,13 @@ describe('EmployeeDocumentsService', () => {
   beforeEach(() => {
     createMany = jest.fn();
     findActiveDocumentTypeIds = jest.fn().mockResolvedValue([]);
+    findActiveById = jest.fn();
+    softDelete = jest.fn();
     const repository = {
       createMany,
       findActiveDocumentTypeIds,
+      findActiveById,
+      softDelete,
     } as unknown as EmployeeDocumentsRepository;
 
     run = jest.fn((work: (manager: undefined) => Promise<unknown>) => work(undefined));
@@ -92,5 +98,21 @@ describe('EmployeeDocumentsService', () => {
 
     expect(createMany).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+  });
+
+  it('responde não encontrado para vínculo já removido', async () => {
+    findActiveById.mockResolvedValue(null);
+
+    await expect(service.desvincular('inexistente')).rejects.toThrow(EntityNotFoundError);
+
+    expect(softDelete).not.toHaveBeenCalled();
+  });
+
+  it('grava causa MANUAL ao desvincular vínculo ativo', async () => {
+    findActiveById.mockResolvedValue({ id: 'vinculo-1' });
+
+    await service.desvincular('vinculo-1');
+
+    expect(softDelete).toHaveBeenCalledWith('vinculo-1', 'MANUAL');
   });
 });

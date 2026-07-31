@@ -7,10 +7,12 @@ import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/
 import { DocumentType } from '../document-types/domain/document-type.entity';
 import { Employee } from '../employees/domain/employee.entity';
 import { EmployeeDocument } from './domain/employee-document.entity';
+import { EmployeeDocumentsRepository } from './employee-documents.repository';
 
 describe('EmployeeDocumentsRepository (integration)', () => {
   let container: StartedPostgreSqlContainer;
   let dataSource: DataSource;
+  let repository: EmployeeDocumentsRepository;
 
   beforeAll(async () => {
     container = await new PostgreSqlContainer('postgres:18-alpine').start();
@@ -32,6 +34,7 @@ describe('EmployeeDocumentsRepository (integration)', () => {
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
+    repository = new EmployeeDocumentsRepository(dataSource);
   }, 120_000);
 
   afterAll(async () => {
@@ -59,6 +62,27 @@ describe('EmployeeDocumentsRepository (integration)', () => {
           [employee.id, documentType.id],
         ),
       ).rejects.toThrow();
+    });
+  });
+
+  describe('desvincular', () => {
+    it('grava causa MANUAL na desvinculação', async () => {
+      const employee = await dataSource
+        .getRepository(Employee)
+        .save(dataSource.getRepository(Employee).create({ name: 'Ana', email: 'ana@example.com' }));
+      const documentType = await dataSource
+        .getRepository(DocumentType)
+        .save(dataSource.getRepository(DocumentType).create({ name: 'CPF' }));
+      const [vinculo] = await repository.createMany(employee.id, [documentType.id]);
+
+      await repository.softDelete(vinculo.id, 'MANUAL');
+
+      const linha = await dataSource
+        .getRepository(EmployeeDocument)
+        .findOne({ where: { id: vinculo.id }, withDeleted: true });
+
+      expect(linha?.deletedAt).not.toBeNull();
+      expect(linha?.deletionCause).toBe('MANUAL');
     });
   });
 });
