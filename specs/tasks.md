@@ -465,14 +465,21 @@ O código que escreve em `employee_documents` vive no módulo dono (D-10). As ta
 `employees` e `document-types` apenas chamam o service público dentro da transação já
 aberta — por isso cada propagação são **duas** tasks, não uma.
 
-- [ ] **TASK-031** · P0 · `employee-documents` · adiciona remocao em lote de vinculos por colaborador
+- [x] **TASK-031** · P0 · `employee-documents` · adiciona remocao em lote de vinculos por colaborador
   - Requisitos: REQ-12.2
   - Depende de: TASK-030
   - Aceite: marca como removidos todos os vínculos ativos do colaborador, gravando causa,
     aceitando `EntityManager` externo
   - Teste: `employee-documents.repository.integration.spec.ts` → "remove todos os vínculos
-    ativos do colaborador"
-  - Commit: `feat(employee-documents)`
+    ativos do colaborador"; adicionado também "preserva a causa de vínculo já desvinculado
+    manualmente", que prova a parte **"ativos"** do Aceite — sem ele o filtro
+    `deletedAt: IsNull()` poderia sumir sem nenhum teste acusar
+  - Commit: `feat(employee-documents)` · `c87f231`
+  - **Decisão confirmada com o humano, não coberta por `design.md`**: D-12 previa apenas
+    `MANUAL` e `TYPE_REMOVED`, e a cascata de remoção de colaborador não tinha causa própria.
+    Acrescentado `EMPLOYEE_REMOVED`, simétrico a `TYPE_REMOVED` — um valor por gatilho de
+    cascata. Sem migration: a coluna é `varchar(20)` sem `CHECK` de enum. D-12 atualizada no
+    mesmo commit.
 
 - [ ] **TASK-032** · P0 · `employees` · propaga remocao de colaborador aos vinculos
   - Requisitos: REQ-12.3, REQ-12.4, REQ-15.1
