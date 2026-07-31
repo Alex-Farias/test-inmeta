@@ -738,7 +738,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     existente e inserir a próxima. O segundo caminho tem estado anterior a preservar, e é o
     único dos dois onde REQ-07.6 — "sem versão órfã" — pode falhar de verdade.
 
-- [ ] **TASK-043** · P0 · `submissions` · rejeita envio para vinculo removido
+- [x] **TASK-043** · P0 · `submissions` · rejeita envio para vinculo removido
   - Requisitos: REQ-06.4, REQ-06.5, REQ-14.8
   - Depende de: TASK-038, TASK-030
   - Aceite, um 404 para os três requisitos que a task já declarava:
@@ -752,7 +752,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Teste: `submissions.service.spec.ts` → "responde não encontrado para vínculo removido ou
     inexistente", para a ramificação; `submissions.integration.spec.ts` →
     `describe('vínculo inválido')` com os quatro casos, para a consulta
-  - Commit: `feat(submissions)`
+  - Commit: `feat(submissions)` · `05f0dc0`
   - **Aceite expandido, requisitos inalterados.** A redação original citava só a frase de
     REQ-06.4, embora a linha `Requisitos` já listasse os três. Os três são fechados pelo mesmo
     método e passaram a aparecer explicitamente — rastreabilidade não deve depender de quem lê
