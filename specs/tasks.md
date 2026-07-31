@@ -793,7 +793,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     removido é operação idempotente na prática — o registro já está fora de toda consulta. O
     que se ganha é uniformidade da regra de D-06, não correção de comportamento observável.
 
-- [ ] **TASK-044** · P0 · `submissions` · adiciona consulta do historico de versoes
+- [x] **TASK-044** · P0 · `submissions` · adiciona consulta do historico de versoes
   - Requisitos: REQ-09.1, REQ-09.2, REQ-09.3
   - Depende de: TASK-040
   - Aceite: retorna todos os envios do vínculo, ativos e inativos, indicando versão, instante
@@ -802,7 +802,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     versão", mais "não mistura envios de outro vínculo", "inclui envio removido no histórico",
     "pagina o histórico sem repetir nem omitir versão" e "retorna página vazia para vínculo
     sem envio"
-  - Commit: `feat(submissions)`
+  - Commit: `feat(submissions)` · `9cabdd5`
   - **`deletedAt` entrou no payload, quinto campo (design §4.3).** Com os quatro de REQ-09.2,
     um envio removido e um superado por reenvio ficam idênticos na resposta — ambos
     `isActive: false`. REQ-08 exige que a remoção não falsifique o histórico, e não distinguir
