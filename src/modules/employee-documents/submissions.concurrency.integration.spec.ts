@@ -144,4 +144,74 @@ describe('Submissions — concorrência (integration)', () => {
       expect(linhas[0].isActive).toBe(true);
     });
   });
+
+  describe('reenvio', () => {
+    it('persiste exatamente um de dois reenvios simultâneos', async () => {
+      const vinculo = await criarVinculo('RG');
+
+      // Estado anterior a preservar — e o que distingue esta corrida da de
+      // primeiro envio. La as duas insercoes disputam uma linha que ainda nao
+      // existe; aqui as duas transacoes disputam **desativar a linha existente
+      // e inserir a proxima**, e REQ-07.6 so pode falhar de verdade neste
+      // caminho, porque so ele tem o que estragar.
+      await service.enviar(vinculo.id);
+
+      // A barreira vai em `deactivateActive`, e **nao** em `findNextVersion`
+      // como no caso de primeiro envio. A diferenca nao e estetica: no reenvio
+      // a primeira escrita e o `UPDATE` que desativa a v1, e ele toma lock de
+      // linha. Com a barreira em `findNextVersion`, T1 passaria pelo `UPDATE`,
+      // tomaria o lock e so entao esperaria; T2 bloquearia **no `UPDATE`**, sem
+      // nunca alcancar a barreira. Um participante de dois chega, a barreira
+      // nunca libera, e o teste morre por timeout. Ver design.md, secao 5.
+      const barreira = criarBarreira(2);
+      const restaurar = sincronizarEm(repository, 'deactivateActive', barreira);
+
+      let resultados: PromiseSettledResult<unknown>[];
+      try {
+        resultados = await Promise.allSettled([
+          service.enviar(vinculo.id),
+          service.enviar(vinculo.id),
+        ]);
+      } finally {
+        restaurar();
+      }
+
+      const cumpridas = resultados.filter((resultado) => resultado.status === 'fulfilled');
+      const rejeitadas = resultados.filter((resultado) => resultado.status === 'rejected');
+
+      // REQ-07.5: exatamente um persiste, o outro e rejeitado por conflito.
+      expect(cumpridas).toHaveLength(1);
+      expect(rejeitadas).toHaveLength(1);
+
+      // Estrito, ao contrario do caso de primeiro envio, e de proposito: aqui a
+      // discriminacao de D-14 **e** deterministica. A perdedora ja encontra uma
+      // linha ativa commitada pela vencedora, entao calcula a versao seguinte a
+      // ela — numero que ninguem tem — e colide so em `uq_submission_active`,
+      // sem chance de propor versao repetida. E este caso que prova a
+      // afirmacao de design.md, secao 5, de que a nao-determinacao se restringe
+      // a corrida de primeiro envio.
+      const [rejeitada] = rejeitadas;
+      expect(rejeitada.reason).toBeInstanceOf(ConcurrentSubmissionError);
+
+      const linhas = await dataSource
+        .getRepository(DocumentSubmission)
+        .find({ withDeleted: true, order: { version: 'ASC' } });
+
+      // REQ-07.6, "sem versao orfa": a perdedora nao deixou rastro. Sao duas
+      // linhas, nao tres — a v3 que ela tentou inserir sumiu no rollback.
+      expect(linhas.map((linha) => linha.version)).toEqual([1, 2]);
+
+      // REQ-07.3 e REQ-07.4: uma unica ativa, e a sequencia continua contigua.
+      expect(linhas.filter((linha) => linha.isActive)).toHaveLength(1);
+      expect(linhas[1].isActive).toBe(true);
+
+      // O que este caso **nao** prova: que o rollback e o que impede o vinculo
+      // de ficar sem envio ativo nenhum. Nesta interleaving o `UPDATE` da
+      // perdedora destrava depois do commit da vencedora e afeta zero linhas —
+      // a v1 ja nao casa o predicado —, entao nao ha desativacao a desfazer.
+      // Quem impede o "zero ativo" aqui e o lock de linha. A prova do rollback
+      // e "desfaz a desativacao do anterior se a insercao falhar", em
+      // `submissions.integration.spec.ts`.
+    });
+  });
 });

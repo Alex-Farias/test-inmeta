@@ -961,9 +961,26 @@ motivo errado — como ocorreu na primeira versão de TASK-039, que testava aus�
 a reenvio, não concorrência.
 
 O ferramental está em `test/helpers/concurrent-transactions.ts`. A barreira é posicionada
-**depois** de a transação abrir e **antes** da escrita disputada; se algum participante não
-chegar, ela nunca libera e o teste estoura por timeout, que é a falha barulhenta que se quer
-— sobreposição presumida e não ocorrida deve quebrar, não passar.
+**depois** de a transação abrir e **antes da primeira escrita** do caminho sob teste; se algum
+participante não chegar, ela nunca libera e o teste estoura por timeout, que é a falha
+barulhenta que se quer — sobreposição presumida e não ocorrida deve quebrar, não passar.
+
+**"Antes da primeira escrita", e não "antes da escrita disputada".** A distinção parece
+pedante e não é: a primeira escrita toma lock de linha, e um participante que ainda não
+chegou à barreira fica preso nesse lock antes dela. A barreira então espera por quem o lock
+não deixa chegar, e o teste morre por timeout sem que haja defeito nenhum no sistema.
+
+O contraste entre os dois casos de concorrência do projeto mostra o efeito. No **primeiro
+envio** não há linha anterior, logo não há lock a disputar antes do `INSERT`, e a barreira
+cabe em `findNextVersion`. No **reenvio** a primeira escrita é o `UPDATE` que desativa a
+versão ativa; a barreira tem de ficar em `deactivateActive`, antes dele. Posicioná-la em
+`findNextVersion` ali travaria a suíte.
+
+A serialização que o lock impõe **não** invalida o teste de reenvio: as duas transações
+estiveram abertas ao mesmo tempo, e o lock é justamente o mecanismo sob prova. O que ele
+garante é que a perdedora só prossegue depois do commit da vencedora, calcula a versão
+seguinte a ela e colide apenas em `uq_submission_active` — o que torna a discriminação de
+D-14 exata nesse caminho, ao contrário do primeiro envio.
 
 ### O limite da discriminação de D-14
 

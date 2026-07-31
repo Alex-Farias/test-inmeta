@@ -713,6 +713,25 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Teste: `submissions.concurrency.integration.spec.ts` → "persiste exatamente um de dois
     reenvios simultâneos"
   - Commit: `test(submissions)`
+  - **A barreira vai em `deactivateActive`, não em `findNextVersion`.** Copiar a posição da
+    TASK-039 travaria a suíte: no reenvio a primeira escrita é o `UPDATE` que desativa a
+    versão ativa, e ele toma lock de linha. A primeira transação passaria pelo `UPDATE` e só
+    então esperaria na barreira; a segunda bloquearia **no `UPDATE`**, sem nunca alcançá-la —
+    um participante de dois chega, a barreira não libera, timeout sem defeito algum no
+    sistema. A regra em `design.md` §5 foi refinada por causa deste caso: "antes da primeira
+    escrita", não "antes da escrita disputada".
+  - **Asserção estrita em `ConcurrentSubmissionError`**, ao contrário da TASK-039. Aqui a
+    discriminação de D-14 é determinística: a perdedora só prossegue após o commit da
+    vencedora, calcula a versão seguinte a ela — número que ninguém tem — e colide apenas em
+    `uq_submission_active`. É este caso que sustenta a afirmação de `design.md` §5 de que a
+    não-determinação se restringe à corrida de primeiro envio.
+  - **Falsificado antes de commitar.** Com a barreira removida, os dois reenvios passaram
+    (versões 2 e 3, sem sobreposição alguma) — exatamente o falso positivo que o helper
+    existe para impedir, agora demonstrado também neste caminho.
+  - **Não prova o rollback.** Nesta interleaving o `UPDATE` da perdedora destrava depois do
+    commit da vencedora e afeta zero linhas, então não há desativação a desfazer: quem impede
+    o "zero ativo" aqui é o lock, não a transação. A prova do rollback é "desfaz a desativação
+    do anterior se a inserção falhar", da TASK-040.
   - **Não é duplicata da TASK-039**, apesar de as duas usarem `Promise.all` sobre a mesma
     constraint e morarem no mesmo arquivo. Lá são duas inserções disputando uma linha que
     ainda não existe, sem transação; aqui são duas transações disputando desativar a linha
