@@ -1455,15 +1455,30 @@ padrão que a TASK-077 já usava — a categoria de origem **é** a rastreabilid
     lista, mas vínculo e colaborador removidos apenas zeram a contagem. O caso passou a
     distinguir os dois efeitos, o que o tornou mais forte que a versão original.
 
-- [ ] **TASK-074** · P0 · `shared` · audita rastreabilidade de requisito para task
+- [x] **TASK-074** · P0 · `shared` · audita rastreabilidade de requisito para task
   - Origem: Entrega / fechamento
   - Depende de: TASK-073
   - Aceite: todo `REQ-##` tem task concluída ou justificativa registrada de não
     implementação; requisito órfão é bug de processo. **Tasks de origem "Entrega /
     fechamento" (TASK-073 a TASK-077) são isentas de mapeamento para `REQ`** — a categoria de
     origem é a rastreabilidade delas, e cobrar `REQ` faria a auditoria acusar a si mesma
-  - Teste: verificação documentada no README
-  - Commit: `docs`
+  - Teste: `specs/rastreabilidade.md` — extração mecânica das duas fontes, não leitura a
+    olho. 23 `REQ` de topo, 129 critérios, 119 referenciados por task `[x]`, zero *dangling*,
+    zero critério coberto só por task pendente
+  - Commit: `docs` · `ad6f6d5`
+  - **O relatório saiu em arquivo próprio, não no README.** O aceite dizia "documentada no
+    README", mas a TASK-075 não foi escrita — o README é entregável que não se delega. A
+    auditoria vive em `specs/rastreabilidade.md` e é material para a 075 incorporar.
+  - **Os 10 órfãos eram lacuna de mapeamento, não de comportamento.** Todos os dez têm
+    cobertura; nenhum recebeu justificativa de não implementação, porque escrever "decidimos
+    não implementar" sobre comportamento testado seria pior que o silêncio original.
+  - **REQ-15.6 fica com meia pendência declarada.** Exige classificar as operações não
+    críticas **e** justificar na documentação de entrega. A classificação está em `design.md`
+    D-04; a justificativa depende do README. É o único critério cuja segunda metade vence
+    junto com a TASK-075.
+  - **Cinco achados colaterais, um deles em commit separado.** Quatro eram desalinhamento
+    entre documentos, corrigidos no mesmo commit. O quinto era o `commitlint` recusando o
+    commit desta própria auditoria, corrigido em `97f897b` por ser mudança de configuração.
 
 - [ ] **TASK-075** · P0 · `shared` · escreve readme final com decisoes e trade-offs
   - Origem: Entrega / fechamento
