@@ -1190,7 +1190,7 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
     vínculos (66,67%), fração que não falsificaria um bug de exclusão com a mesma clareza que
     75%→100% falsifica.
 
-- [ ] **TASK-062** · P1 · `employee-documents` · cobre isolamento e reinicio de versao no re-vinculo
+- [x] **TASK-062** · P1 · `employee-documents` · cobre isolamento e reinicio de versao no re-vinculo
   - Requisitos: REQ-05.2, REQ-05.3, REQ-05.4
   - Depende de: TASK-035, TASK-044, TASK-048
   - Aceite: o vínculo anterior e seus envios seguem consultáveis, mas não contam para
@@ -1198,10 +1198,20 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
     herdar a numeração do anterior
   - Teste: `employee-documents.integration.spec.ts` → "vínculo anterior não conta para pendência"
     e "vínculo novo reinicia a numeração de versões"
-  - Commit: `test(employee-documents)`
+  - Commit: `test(employee-documents)` · `af72c98`
   - **REQ-05.2 veio da TASK-035**, onde não era demonstrável: exige `document_submissions`,
     que só nasce na TASK-037. As três facetas descrevem o mesmo cenário — vínculo recriado
     após desvinculação — e agora são provadas juntas. Ver a nota em D-07.
+  - **Sem código de produção novo** — mesmo padrão de TASK-018/019/027/035/050/052:
+    `uq_employee_document_active` parcial (TASK-025) e `version` sequencial por vínculo (D-07)
+    já garantiam isso.
+  - **`beforeAll` de `employee-documents.integration.spec.ts` estendido** com a migration/
+    entidade de `document_submissions` e `SubmissionsService`/`StatisticsRepository` — o
+    arquivo cobria só `vincular`/`desvincular` até aqui.
+  - **A asserção que pega o antigo contando por engano**: no primeiro `it`, se o vínculo
+    desvinculado ainda somasse ao denominador, o percentual cairia de 50/50 para 33/33 em vez
+    de permanecer 50/50 — não é só "o antigo não aparece na lista", é "o antigo não muda a
+    conta".
 
 ---
 
