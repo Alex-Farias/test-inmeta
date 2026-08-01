@@ -25,6 +25,22 @@ interface LinhaDeTipoPendente {
   pending_count: string;
 }
 
+export interface UltimoEnvio {
+  employee: { id: string; name: string };
+  documentType: { id: string; name: string };
+  version: number;
+  submittedAt: Date;
+}
+
+interface LinhaDeUltimoEnvio {
+  employee_id: string;
+  employee_name: string;
+  document_type_id: string;
+  document_type_name: string;
+  version: number;
+  submitted_at: Date;
+}
+
 /**
  * Exceção declarada de D-10: acessa o schema diretamente por SQL, sem
  * repositório TypeORM nem entidade própria — compor a partir dos services de
@@ -144,6 +160,52 @@ export class StatisticsRepository {
     return linhas.map((linha) => ({
       documentType: { id: linha.id, name: linha.name },
       pendingCount: Number(linha.pending_count),
+    }));
+  }
+
+  /**
+   * Sem filtro de `is_active`: nada em REQ-18.1/18.2 pede envio ativo, e a
+   * tradução direta do requisito já inclui versão superada por reenvio — é o
+   * que a TASK-058 prova de ponta a ponta, não o que introduz.
+   *
+   * `ORDER BY submitted_at DESC, id DESC` usa `idx_submissions_recent`
+   * (§1.3) e já cobre o desempate determinístico de instante empatado
+   * (REQ-18.6).
+   *
+   * Os três `JOIN ... AND deleted_at IS NULL` são D-06 (REQ-18.4): vínculo,
+   * colaborador ou tipo removido tiram o envio do resultado. Submission
+   * removida (via `softDeleteActive`, TASK-046) também some — REQ-18 não
+   * declara exceção ao soft delete, ao contrário de REQ-09 para o histórico
+   * do vínculo, então segue a regra padrão de D-06/REQ-14.2.
+   */
+  async ultimosEnvios(limit: number, manager?: EntityManager): Promise<UltimoEnvio[]> {
+    const executor = manager ?? this.dataSource;
+
+    const linhas = await executor.query<LinhaDeUltimoEnvio[]>(
+      `
+      SELECT
+        ed.employee_id,
+        e.name AS employee_name,
+        ed.document_type_id,
+        dt.name AS document_type_name,
+        s.version,
+        s.submitted_at
+      FROM document_submissions s
+      JOIN employee_documents ed ON ed.id = s.employee_document_id AND ed.deleted_at IS NULL
+      JOIN employees      e  ON e.id  = ed.employee_id      AND e.deleted_at  IS NULL
+      JOIN document_types dt ON dt.id = ed.document_type_id AND dt.deleted_at IS NULL
+      WHERE s.deleted_at IS NULL
+      ORDER BY s.submitted_at DESC, s.id DESC
+      LIMIT $1;
+    `,
+      [limit],
+    );
+
+    return linhas.map((linha) => ({
+      employee: { id: linha.employee_id, name: linha.employee_name },
+      documentType: { id: linha.document_type_id, name: linha.document_type_name },
+      version: linha.version,
+      submittedAt: linha.submitted_at,
     }));
   }
 }

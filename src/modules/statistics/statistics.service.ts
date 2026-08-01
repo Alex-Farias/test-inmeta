@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
-import { ConformidadeGlobal, StatisticsRepository, TipoPendente } from './statistics.repository';
+import { LatestSubmissionsQueryDto } from './dto/latest-submissions-query.dto';
+import {
+  ConformidadeGlobal,
+  StatisticsRepository,
+  TipoPendente,
+  UltimoEnvio,
+} from './statistics.repository';
 
 @Injectable()
 export class StatisticsService {
@@ -12,5 +18,9 @@ export class StatisticsService {
 
   pendingTypes(): Promise<TipoPendente[]> {
     return this.repository.rankingDeTiposPendentes();
+  }
+
+  latestSubmissions(query: LatestSubmissionsQueryDto): Promise<UltimoEnvio[]> {
+    return this.repository.ultimosEnvios(query.limit);
   }
 }

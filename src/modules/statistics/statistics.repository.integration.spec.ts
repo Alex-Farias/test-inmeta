@@ -218,4 +218,89 @@ describe('StatisticsRepository (integration)', () => {
       expect(entrada?.pendingCount).toBe(0);
     });
   });
+
+  describe('ultimosEnvios', () => {
+    it('retorna ultimos envios do mais novo ao mais antigo', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+      const rg = await documentTypes.save(documentTypes.create({ name: 'RG' }));
+
+      const vinculoCpf = await employeeDocuments.save(
+        employeeDocuments.create({ employeeId: ana.id, documentTypeId: cpf.id }),
+      );
+      const vinculoRg = await employeeDocuments.save(
+        employeeDocuments.create({ employeeId: ana.id, documentTypeId: rg.id }),
+      );
+
+      const agora = Date.now();
+      const maisAntigo = await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoCpf.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(agora - 2000),
+        }),
+      );
+      const maisRecente = await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoRg.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(agora),
+        }),
+      );
+
+      const resultado = await repository.ultimosEnvios(20);
+
+      expect(resultado.map((item) => item.version)).toEqual([
+        maisRecente.version,
+        maisAntigo.version,
+      ]);
+      expect(resultado[0].documentType.id).toBe(rg.id);
+      expect(resultado[0].employee.id).toBe(ana.id);
+      expect(resultado[1].documentType.id).toBe(cpf.id);
+      expect(resultado[0].submittedAt.getTime()).toBeGreaterThan(
+        resultado[1].submittedAt.getTime(),
+      );
+    });
+
+    it('aplica o limite informado', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const tipos = await Promise.all(
+        ['CPF', 'RG', 'CNH'].map((nome) =>
+          documentTypes.save(documentTypes.create({ name: nome })),
+        ),
+      );
+
+      const agora = Date.now();
+      for (const [indice, tipo] of tipos.entries()) {
+        const vinculo = await employeeDocuments.save(
+          employeeDocuments.create({ employeeId: ana.id, documentTypeId: tipo.id }),
+        );
+        await submissions.save(
+          submissions.create({
+            employeeDocumentId: vinculo.id,
+            version: 1,
+            isActive: true,
+            submittedAt: new Date(agora - indice * 1000),
+          }),
+        );
+      }
+
+      const resultado = await repository.ultimosEnvios(2);
+
+      expect(resultado).toHaveLength(2);
+      expect(resultado.map((item) => item.documentType.id)).toEqual([tipos[0].id, tipos[1].id]);
+    });
+  });
 });

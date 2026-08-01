@@ -1,8 +1,8 @@
 import { Transform } from 'class-transformer';
 import { IsInt, IsOptional, Min } from 'class-validator';
 
-const LIMITE_PADRAO = 20;
-const LIMITE_TETO = 100;
+export const LIMITE_PADRAO = 20;
+export const LIMITE_TETO = 100;
 
 /**
  * `page`/`limit` por offset (D-15). Exceder o teto **nao** e invalido: o

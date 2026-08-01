@@ -960,13 +960,43 @@ emitido — quem lesse o histórico veria a versão 4 suceder a 2 sem explicaç�
 {
   "employeesFullyCompliantPercentage": 62.5,
   "documentsSubmittedPercentage": 81.3,
-  "employeesWithoutRequirements": 4,
-  "totals": { "activeEmployees": 20, "activeRequirements": 75, "submitted": 61 }
+  "employeesWithoutRequirements": 4
 }
 ```
 
 `employeesWithoutRequirements` é o que torna `employeesFullyCompliantPercentage`
 interpretável — sem ele, o leitor não sabe sobre qual base os 62,5% incidem (REQ-16.4).
+
+**Nota de correção.** O exemplo anterior trazia também um `totals` (`activeEmployees`,
+`activeRequirements`, `submitted`). Nenhum critério de REQ-16 pede totais absolutos — só os
+dois percentuais e a contagem de excluídos —, e nenhuma task de `tasks.md` chegou a cobri-lo;
+ficou como resíduo do rascunho inicial deste exemplo. Removido para o exemplo não afirmar um
+contrato que o sistema não entrega.
+
+```jsonc
+// GET /statistics/pending-types — REQ-17, sem paginação (é ranking completo, não listagem)
+[
+  { "documentType": { "id": "…", "name": "CPF" }, "pendingCount": 12 },
+  { "documentType": { "id": "…", "name": "RG" }, "pendingCount": 3 }
+]
+```
+
+```jsonc
+// GET /statistics/latest-submissions?limit=20 — REQ-18
+[
+  {
+    "employee": { "id": "…", "name": "Ana" },
+    "documentType": { "id": "…", "name": "CPF" },
+    "version": 2,
+    "submittedAt": "2026-07-30T12:00:00.000Z"
+  }
+]
+```
+
+`limit` reaproveita os **números** de D-15 (padrão 20, teto 100) — decisão confirmada com o
+humano para não introduzir um segundo par de limites no sistema — mas não a forma de resposta:
+"últimos envios" é top-N, sem `page`/`total`, porque `page` sempre `1` e `total` sempre igual a
+`limit` não comunicam nada.
 
 ### 4.5 Operação
 

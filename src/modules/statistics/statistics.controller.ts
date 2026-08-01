@@ -1,6 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 
-import { ConformidadeGlobal, TipoPendente } from './statistics.repository';
+import { LatestSubmissionsQueryDto } from './dto/latest-submissions-query.dto';
+import { ConformidadeGlobal, TipoPendente, UltimoEnvio } from './statistics.repository';
 import { StatisticsService } from './statistics.service';
 
 @Controller('statistics')
@@ -15,5 +16,10 @@ export class StatisticsController {
   @Get('pending-types')
   pendingTypes(): Promise<TipoPendente[]> {
     return this.service.pendingTypes();
+  }
+
+  @Get('latest-submissions')
+  latestSubmissions(@Query() query: LatestSubmissionsQueryDto): Promise<UltimoEnvio[]> {
+    return this.service.latestSubmissions(query);
   }
 }
