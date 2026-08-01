@@ -63,7 +63,14 @@ describe('Logs estruturados (nestjs-pino)', () => {
       imports: [RootProbeModule],
     })
       .overrideProvider(PARAMS_PROVIDER_TOKEN)
-      .useValue({ ...pinoParams, pinoHttp: { ...pinoParams.pinoHttp, stream } })
+      .useValue({
+        ...pinoParams,
+        // `transport` (TASK-067) e `stream` são mutuamente exclusivos no
+        // pino — sem desligar o primeiro aqui, o teste escreveria de verdade
+        // via pino-pretty (fora de produção é exatamente o ambiente do
+        // Jest) e a captura ficaria vazia.
+        pinoHttp: { ...pinoParams.pinoHttp, transport: undefined, stream },
+      })
       .compile();
 
     app = moduleRef.createNestApplication();

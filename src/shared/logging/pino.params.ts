@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
+import { config as loadDotenv } from 'dotenv';
 import type { Request } from 'express';
 import type { Params } from 'nestjs-pino';
+
+import { Environment } from '../../config/env.validation';
+
+// Redundante com o `loadDotenv()` de `data-source.ts` quando este módulo é
+// importado depois dele (é o caso hoje, em `app.module.ts`) — mas esse
+// arquivo não deve depender de ordem de import para saber o ambiente.
+// `dotenv` não sobrescreve variável já presente; chamar de novo é sem custo.
+loadDotenv();
 
 export const REQUEST_ID_HEADER = 'x-request-id';
 
@@ -46,5 +55,9 @@ export const pinoParams: Params = {
       paths: ['req.body.email', 'req.body.name', 'body.email', 'body.name', 'email', 'name'],
       censor: '[REDACTED]',
     },
+    // REQ-20.5. `pino-pretty` só fora de produção — log legível por humano em
+    // produção é log que nenhum coletor indexa (stack.md, seção "Logs").
+    transport:
+      process.env.NODE_ENV === Environment.Production ? undefined : { target: 'pino-pretty' },
   },
 };
