@@ -14,6 +14,17 @@ interface LinhaDeConformidade {
   employees_without_requirements: string;
 }
 
+export interface TipoPendente {
+  documentType: { id: string; name: string };
+  pendingCount: number;
+}
+
+interface LinhaDeTipoPendente {
+  id: string;
+  name: string;
+  pending_count: string;
+}
+
 /**
  * Exceção declarada de D-10: acessa o schema diretamente por SQL, sem
  * repositório TypeORM nem entidade própria — compor a partir dos services de
@@ -88,5 +99,51 @@ export class StatisticsRepository {
       employeesFullyCompliantPercentage: Number(linha.employees_fully_compliant_percentage),
       employeesWithoutRequirements: Number(linha.employees_without_requirements),
     };
+  }
+
+  /**
+   * Reaproveita a definição de pendência de D-03/§1.4 (vínculo ativo de
+   * colaborador ativo, sem submission ativa) numa CTE, e faz `LEFT JOIN` a
+   * partir de `document_types` — não do anti-join. É o que garante REQ-17.1
+   * **literal**: "para cada tipo de documento ativo", inclusive os com zero
+   * pendências, que um `INNER JOIN`/anti-join direto omitiria em silêncio.
+   *
+   * `ORDER BY pending_count DESC, dt.id ASC`: o desempate por `id` é a mesma
+   * convenção de desempate determinístico usada em toda listagem do projeto
+   * (D-15) — aqui prova REQ-17.3 (duas consultas idênticas, mesma ordem).
+   *
+   * Tipo removido não aparece (`FROM document_types` já filtrado por
+   * `deleted_at IS NULL`); vínculo ou colaborador removido não conta (os dois
+   * `deleted_at IS NULL` da CTE `pendente`, D-06). A prova explícita dessas
+   * exclusões é a TASK-060 — aqui é só a construção que já as garante.
+   */
+  async rankingDeTiposPendentes(manager?: EntityManager): Promise<TipoPendente[]> {
+    const executor = manager ?? this.dataSource;
+
+    const linhas = await executor.query<LinhaDeTipoPendente[]>(`
+      WITH pendente AS (
+        SELECT ed.id, ed.document_type_id
+        FROM employee_documents ed
+        JOIN employees e ON e.id = ed.employee_id AND e.deleted_at IS NULL
+        WHERE ed.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM document_submissions s
+            WHERE s.employee_document_id = ed.id
+              AND s.is_active
+              AND s.deleted_at IS NULL
+          )
+      )
+      SELECT dt.id, dt.name, count(p.id) AS pending_count
+      FROM document_types dt
+      LEFT JOIN pendente p ON p.document_type_id = dt.id
+      WHERE dt.deleted_at IS NULL
+      GROUP BY dt.id, dt.name
+      ORDER BY pending_count DESC, dt.id ASC;
+    `);
+
+    return linhas.map((linha) => ({
+      documentType: { id: linha.id, name: linha.name },
+      pendingCount: Number(linha.pending_count),
+    }));
   }
 }

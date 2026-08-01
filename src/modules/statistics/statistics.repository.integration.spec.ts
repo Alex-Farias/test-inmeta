@@ -142,4 +142,80 @@ describe('StatisticsRepository (integration)', () => {
       expect(resultado.employeesWithoutRequirements).toBe(0);
     });
   });
+
+  describe('rankingDeTiposPendentes', () => {
+    it('ordena tipos por pendencia com desempate estavel', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+
+      const tipoA = await documentTypes.save(documentTypes.create({ name: 'Tipo A' }));
+      const tipoB = await documentTypes.save(documentTypes.create({ name: 'Tipo B' }));
+      const tipoC = await documentTypes.save(documentTypes.create({ name: 'Tipo C' }));
+
+      // A e B empatados em 2 pendencias; C com 1 — todas sem envio (pendentes).
+      for (const [nome, tipo] of [
+        ['e1', tipoA],
+        ['e2', tipoA],
+        ['e3', tipoB],
+        ['e4', tipoB],
+        ['e5', tipoC],
+      ] as const) {
+        const funcionario = await employees.save(
+          employees.create({ name: nome, email: `${nome}@example.com` }),
+        );
+        await employeeDocuments.save(
+          employeeDocuments.create({ employeeId: funcionario.id, documentTypeId: tipo.id }),
+        );
+      }
+
+      const primeira = await repository.rankingDeTiposPendentes();
+      const segunda = await repository.rankingDeTiposPendentes();
+
+      // Duas consultas identicas retornam a mesma ordem (REQ-17.3).
+      expect(primeira.map((item) => item.documentType.id)).toEqual(
+        segunda.map((item) => item.documentType.id),
+      );
+
+      expect(primeira.map((item) => item.pendingCount)).toEqual([2, 2, 1]);
+      expect(primeira[2].documentType.id).toBe(tipoC.id);
+      expect(new Set(primeira.slice(0, 2).map((item) => item.documentType.id))).toEqual(
+        new Set([tipoA.id, tipoB.id]),
+      );
+    });
+
+    it('inclui tipo ativo sem nenhuma pendencia', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const tipoSemPendencia = await documentTypes.save(
+        documentTypes.create({ name: 'Sem pendencia' }),
+      );
+      const funcionario = await employees.save(
+        employees.create({ name: 'Ana', email: 'ana@example.com' }),
+      );
+      const vinculo = await employeeDocuments.save(
+        employeeDocuments.create({
+          employeeId: funcionario.id,
+          documentTypeId: tipoSemPendencia.id,
+        }),
+      );
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculo.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(),
+        }),
+      );
+
+      const resultado = await repository.rankingDeTiposPendentes();
+
+      const entrada = resultado.find((item) => item.documentType.id === tipoSemPendencia.id);
+      expect(entrada).toBeDefined();
+      expect(entrada?.pendingCount).toBe(0);
+    });
+  });
 });

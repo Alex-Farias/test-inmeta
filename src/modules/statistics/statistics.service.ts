@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { ConformidadeGlobal, StatisticsRepository } from './statistics.repository';
+import { ConformidadeGlobal, StatisticsRepository, TipoPendente } from './statistics.repository';
 
 @Injectable()
 export class StatisticsService {
@@ -8,5 +8,9 @@ export class StatisticsService {
 
   overview(): Promise<ConformidadeGlobal> {
     return this.repository.calcularConformidadeGlobal();
+  }
+
+  pendingTypes(): Promise<TipoPendente[]> {
+    return this.repository.rankingDeTiposPendentes();
   }
 }
