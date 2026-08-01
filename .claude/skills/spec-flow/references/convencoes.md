@@ -18,6 +18,11 @@ Conventional Commits, escopo = módulo.
 **Escopos:** `employees` · `document-types` · `employee-documents` · `submissions` ·
 `statistics` · `shared` · `db` · `infra`
 
+`docs` é o **único tipo que dispensa escopo**, reservado a entregáveis que atravessam o
+projeto inteiro — README, auditorias de rastreabilidade — e não uma task específica de um
+módulo. Todos os demais exigem escopo. A regra está no `commitlint.config.js`, que testa o
+tipo em vez de aplicar `scope-empty` global.
+
 ### Regras
 
 - **Uma task = um commit.** Se o diff em stage contém mais de uma unidade lógica, pare e
