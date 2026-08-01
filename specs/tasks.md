@@ -1230,13 +1230,25 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
     Terminus (`HealthCheckExecutor`, `ERROR_LOGGER`, `TERMINUS_LOGGER`) não é pensado para
     instanciação manual — é a via oficialmente suportada pela lib.
 
-- [ ] **TASK-065** · P2 · `shared` · adiciona logs estruturados com request id correlacionado
+- [x] **TASK-065** · P2 · `shared` · adiciona logs estruturados com request id correlacionado
   - Requisitos: REQ-20.1, REQ-20.2, REQ-20.3
   - Depende de: TASK-007
   - Aceite: registros em JSON, todos os logs de uma requisição sob o mesmo identificador, e
     esse identificador é o mesmo devolvido nas respostas de erro
   - Teste: `logger.integration.spec.ts` → "usa o mesmo requestId do payload de erro"
-  - Commit: `feat(shared)`
+  - Commit: `feat(shared)` · `27446c2`
+  - **Achado durante a implementação, não coberto por `design.md`, confirmado com o humano
+    antes de codar.** `LoggerModule` do nestjs-pino é `@Global()`, e módulo global tem
+    middleware aplicado **antes** do middleware do módulo raiz — confirmado empiricamente
+    contra `NestFactory.create` e `Test.createTestingModule`. Na prática, o `genReqId` do
+    pino roda antes do `RequestIdMiddleware` (TASK-007), invertendo a premissa original
+    (middleware gera, pino só lê). A geração migrou para `genReqId`
+    (`pino.params.ts`), e `RequestIdMiddleware` deixou de gerar — só garante que o id existe
+    em `request.requestId` (fallback próprio) e o ecoa no header. Contrato externo idêntico;
+    `request-id.middleware.spec.ts` (TASK-007) foi reescrito para o novo contrato — testa
+    propagação de `request.id`, não mais geração a partir de header.
+  - `@nestjs/testing` entra como devDependency (mesma decisão da TASK-064) para testar a
+    correlação fim a fim via HTTP real.
 
 - [ ] **TASK-066** · P2 · `shared` · omite dado pessoal dos registros de execucao
   - Requisitos: REQ-20.4
