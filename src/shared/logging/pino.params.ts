@@ -27,5 +27,24 @@ export const pinoParams: Params = {
 
       return informado?.trim() ? informado.trim() : randomUUID();
     },
+    /**
+     * REQ-20.4. Guarda preventiva, não decorativa — mesma natureza da regra
+     * de lint da TASK-063: hoje nenhum caminho de código loga corpo de
+     * requisição (o serializer padrão do pino-http nem inclui `req.body`, e
+     * incluí-lo à força não funciona: pino serializa o `req` vinculado ao
+     * logger da requisição no instante em que o middleware do pino roda —
+     * antes do body-parser preencher `request.body` —, então a linha
+     * automática de "request completed" sempre veria `body: undefined`,
+     * verificado subindo a aplicação de verdade). Nenhum erro de domínio
+     * embute o valor do campo na mensagem (`employees.service.ts` usa texto
+     * fixo, não `dto.email`). A garantia de hoje é por construção; estes
+     * caminhos existem para que um log explícito futuro — de `req.body`, de
+     * um objeto solto com `email`/`name`, ou de um objeto `body` — já saia
+     * censurado em vez de precisar lembrar de redigir na hora.
+     */
+    redact: {
+      paths: ['req.body.email', 'req.body.name', 'body.email', 'body.name', 'email', 'name'],
+      censor: '[REDACTED]',
+    },
   },
 };
