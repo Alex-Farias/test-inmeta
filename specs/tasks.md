@@ -1347,12 +1347,21 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
 ## Melhorias opcionais
 
 
-- [ ] **TASK-071** · P3 · `db` · adiciona seeds de demonstracao
+- [x] **TASK-071** · P3 · `db` · adiciona seeds de demonstracao
   - Requisitos: —
   - Depende de: TASK-048
   - Aceite: seed popula base suficiente para as estatísticas retornarem valores não triviais
-  - Teste: verificação manual documentada no README
-  - Commit: `feat(db)`
+  - Teste: verificação manual — `npm run seed` (idempotente, segunda execução detecta e sai
+    sem duplicar), aplicação subida, os três endpoints de `/statistics` inspecionados:
+    `documentsSubmittedPercentage` 80%, `employeesFullyCompliantPercentage` 60%,
+    `employeesWithoutRequirements` > 0, `pending-types` com contagem por tipo,
+    `latest-submissions` com a v1 superada e a v2 ativa do CPF de Ana lado a lado (REQ-18.5).
+    Saída real inspecionada.
+  - Commit: `feat(db)` · `f77ebe8`
+  - **Passa pelos services reais** (`create`/`vincular`/`enviar`), não `INSERT` cru — sem
+    decisão travada em `design.md`/`stack.md` para esta task (nenhuma menção a "seed" nos
+    três documentos), mesmo raciocínio da suíte E2E (TASK-069): reaproveitar validação e
+    transação existentes em vez de duplicar regra de negócio num script solto.
 
 - [ ] **TASK-072** · P3 · `infra` · adiciona commitlint
   - Requisitos: —
