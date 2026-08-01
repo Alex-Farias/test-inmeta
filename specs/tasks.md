@@ -1168,13 +1168,27 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
 
 Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inteiro.
 
-- [ ] **TASK-061** · P0 · `employee-documents` · cobre preservacao de submissions apos cascata de tipo
+- [x] **TASK-061** · P0 · `employee-documents` · cobre preservacao de submissions apos cascata de tipo
   - Requisitos: REQ-13.5, REQ-14.6
   - Depende de: TASK-034, TASK-045
   - Aceite: removido o tipo, os vínculos somem de pendentes e dos dois denominadores, e as
     submissions históricas continuam acessíveis
   - Teste: `type-removal.cascade.integration.spec.ts` → "cascata preserva submissions históricas"
-  - Commit: `test(employee-documents)`
+  - Commit: `test(employee-documents)` · `4ea3bb6`
+  - **Sem código de produção novo** — mesmo padrão de TASK-018/019/027/035/050/052: a cascata
+    da TASK-034 e os `JOIN ... AND deleted_at IS NULL` de D-06 já garantiam isso.
+  - **Prova de ponta a ponta pelos services reais**, ao contrário de TASK-059/060: aqui é
+    `DocumentTypesService.softDelete` disparando a cascata de verdade, não bypass pelo
+    `DataSource` — o que se prova é o efeito da cascata em si, não o JOIN isolado dela.
+  - **Um único `it()` para as três partes do Aceite**, por serem o mesmo evento visto de três
+    ângulos: vínculo pendente (Carla/CPF) some de `listarPendentes`; os dois denominadores de
+    `calcularConformidadeGlobal` voltam a 100/100 com só os dois controles (Zeca/Wesley em RG)
+    restando; a submission histórica do vínculo entregue (Bruno/CPF) segue acessível via
+    `consultarHistorico`, com `deletedAt: null` — a cascata para no vínculo, não alcança
+    `document_submissions`.
+  - **Dois controles de RG, não um só** — com um só o total antes da remoção ficava em 3
+    vínculos (66,67%), fração que não falsificaria um bug de exclusão com a mesma clareza que
+    75%→100% falsifica.
 
 - [ ] **TASK-062** · P1 · `employee-documents` · cobre isolamento e reinicio de versao no re-vinculo
   - Requisitos: REQ-05.2, REQ-05.3, REQ-05.4
