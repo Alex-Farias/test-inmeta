@@ -1110,13 +1110,20 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     contrato que o sistema não entrega. Ganhou os exemplos JSON de `pending-types` e
     `latest-submissions`.
 
-- [ ] **TASK-058** · P1 · `statistics` · inclui envios inativos nos ultimos envios
+- [x] **TASK-058** · P1 · `statistics` · inclui envios inativos nos ultimos envios
   - Requisitos: REQ-18.5, REQ-18.6
   - Depende de: TASK-057
   - Aceite: envio que não é mais a versão ativa continua aparecendo, por representar entrega
     ocorrida; empate de instante desempatado deterministicamente
   - Teste: `statistics.repository.integration.spec.ts` → "inclui versão superada nos últimos envios"
-  - Commit: `feat(statistics)`
+  - Commit: `test(statistics)` · `e3168b9`
+  - **Sem código de produção novo** — mesmo padrão de TASK-018/019/027/035/050/052: a
+    TASK-057 já implementa `ultimosEnvios` sem filtro de `is_active` e já ordena com
+    `ORDER BY submitted_at DESC, id DESC`. Re-escopado de `feat` para `test`.
+  - **Teste expandido**: além do nome declarado (reenvio com v1 inativa/v2 ativa, ambas
+    aparecendo), adicionado "desempata por instante idêntico de forma determinística" para
+    REQ-18.6 — duas submissions com o mesmo `submittedAt`, comparando a ordem entre duas
+    chamadas, mesmo padrão de prova de estabilidade da TASK-056.
 
 - [ ] **TASK-059** · P0 · `statistics` · exclui removidos dos dois denominadores
   - Requisitos: REQ-16.5, REQ-14.5
