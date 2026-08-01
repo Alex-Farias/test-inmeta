@@ -1032,14 +1032,23 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
   - Grafo de DI verificado subindo a aplicação (mesma prática de TASK-032/034):
     `StatisticsModule` inicializa e `GET /statistics/overview` aparece mapeada.
 
-- [ ] **TASK-054** · P1 · `statistics` · exclui colaborador sem vinculo do denominador
+- [x] **TASK-054** · P1 · `statistics` · exclui colaborador sem vinculo do denominador
   - Requisitos: REQ-16.4
   - Depende de: TASK-053
   - Aceite: colaborador ativo sem nenhum vínculo ativo fica fora do denominador, e a
     quantidade de excluídos é informada separadamente
   - Teste: `statistics.repository.integration.spec.ts` → "cadastrar colaborador sem vínculo
     não altera o percentual"
-  - Commit: `feat(statistics)`
+  - Commit: `feat(statistics)` · `6210ca1`
+  - **Denominador já excluía por construção.** `por_colaborador` deriva de `vinculo`, que vem
+    de `employee_documents` — colaborador sem nenhum vínculo nunca teve linha ali. O que
+    faltava era só tornar a exclusão visível: `employeesWithoutRequirements` soma uma
+    subquery escalar ao mesmo round-trip, sem segunda consulta.
+  - **Nome do teste expandido** — o declarado ("cadastrar colaborador sem vínculo não altera
+    o percentual") virou dois momentos no mesmo `it`: percentuais antes/depois de cadastrar
+    Bruno sem vínculo, mais a asserção de `employeesWithoutRequirements` indo de `0` a `1`,
+    porque só provar "não muda" deixaria a segunda metade do Aceite (contagem separada) sem
+    teste.
 
 - [ ] **TASK-055** · P1 · `statistics` · retorna valor definido para base vazia
   - Requisitos: REQ-16.6
