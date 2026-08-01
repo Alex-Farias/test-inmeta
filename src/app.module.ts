@@ -9,6 +9,7 @@ import { EmployeeDocumentsModule } from './modules/employee-documents/employee-d
 import { EmployeesModule } from './modules/employees/employees.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
 import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
+import { HealthModule } from './shared/health/health.module';
 import { RequestIdMiddleware } from './shared/http/request-id.middleware';
 import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
 
@@ -27,6 +28,7 @@ import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
     DocumentTypesModule,
     EmployeeDocumentsModule,
     StatisticsModule,
+    HealthModule,
   ],
   providers: [
     // Via APP_FILTER e nao `app.useGlobalFilters` em main.ts: assim o
