@@ -1422,13 +1422,28 @@ Fundação (P1). O nível delas vem da origem **da task**, não do requisito que
 entregáveis de fechamento, avaliados diretamente. Esta é a única exceção ao mapeamento em que
 a origem da task prevalece sobre a do requisito.
 
-- [ ] **TASK-073** · P0 · `shared` · percorre o checklist completo de varredura de soft delete
-  - Requisitos: REQ-14
+- [x] **TASK-073** · P0 · `shared` · percorre o checklist completo de varredura de soft delete
+  - Origem: Entrega / fechamento
   - Depende de: TASK-062, TASK-063
   - Aceite: os doze itens do checklist de `convencoes.md` são conferidos no código, item a
     item, e cada um registra onde foi verificado
-  - Teste: `softdelete.sweep.integration.spec.ts` → "nenhum item do checklist falha"
-  - Commit: `test(shared)`
+  - Teste: `test/integration/softdelete.sweep.integration.spec.ts`, 13 casos — um `describe`
+    por item do checklist, na mesma ordem, cada um com asserção real e o registro em
+    comentário de onde mais o item é provado
+  - Commit: `test(shared)` · `655427c`
+  - **Item 11 do checklist estava errado, não o código.** Pedia 422 para vínculo com tipo
+    removido; o código responde 404 e `design.md` D-06 decide assim de propósito — distinguir
+    qual elo caiu revelaria a existência de registro removido. `BusinessRuleError` (422) não é
+    usado em módulo nenhum. Corrigido em `convencoes.md`, sem mudança de código.
+  - **Dois itens ganharam cobertura nova.** O item 9 passa a afirmar
+    `uq_employee_document_active` via `pg_indexes` — `employees` e `document_types` já tinham
+    essa asserção, `employee_documents` só tinha o CHECK de `deletion_cause`. O item 12 vira
+    asserção sobre `src/` em vez de grep manual, que só falha se alguém lembrar de rodá-lo.
+  - **A varredura pegou dois erros meus, não do produto.** Remover vínculo por SQL sem
+    `deletion_cause` viola o CHECK de D-12 — virou helper próprio. E o item 7 esperava lista
+    vazia nos três níveis: REQ-17.1 manda listar "cada tipo ativo", então tipo removido sai da
+    lista, mas vínculo e colaborador removidos apenas zeram a contagem. O caso passou a
+    distinguir os dois efeitos, o que o tornou mais forte que a versão original.
 
 - [ ] **TASK-074** · P0 · `shared` · audita rastreabilidade de requisito para task
   - Requisitos: REQ-00
