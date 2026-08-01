@@ -1064,14 +1064,26 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     `design.md` (mesmo padrão de confirmação da TASK-011 para os números de paginação): D-09
     ganhou a nota "base vazia → `0`, por decisão, não efeito colateral do cálculo".
 
-- [ ] **TASK-056** · P1 · `statistics` · adiciona tipos mais pendentes
+- [x] **TASK-056** · P1 · `statistics` · adiciona tipos mais pendentes
   - Requisitos: REQ-17.1, REQ-17.2, REQ-17.3
   - Depende de: TASK-048
   - Aceite: quantidade de vínculos ativos pendentes por tipo, ordenada da maior para a menor,
     com desempate determinístico
   - Teste: `statistics.repository.integration.spec.ts` → "ordena tipos por pendência com
     desempate estável"
-  - Commit: `feat(statistics)`
+  - Commit: `feat(statistics)` · `78ec6a9`
+  - **`LEFT JOIN` a partir de `document_types`, não do anti-join de pendência.** É o que
+    garante a leitura literal de REQ-17.1 — "para cada tipo de documento ativo" — inclusive
+    os com `pendingCount` zero, que um `INNER JOIN`/anti-join direto omitiria em silêncio.
+  - **Teste expandido para dois `it()`.** O nome declarado prova ordenação e desempate;
+    adicionado "inclui tipo ativo sem nenhuma pendência" para a leitura literal acima, mesmo
+    padrão de expansão de TASK-028/030/043.
+  - **Desempate por `dt.id ASC`** — mesma convenção de desempate por `id` de D-15. A prova de
+    REQ-17.3 chama a consulta duas vezes e compara a ordem entre as duas, em vez de assumir
+    qual dos dois tipos empatados vem primeiro.
+  - **Exclusão de removidos (REQ-17.4) por construção, sem teste dedicado aqui** — os
+    `deleted_at IS NULL` de D-06 já cobrem tipo/vínculo/colaborador removido; a prova
+    explícita é a TASK-060, fora deste lote.
 
 - [ ] **TASK-057** · P1 · `statistics` · adiciona ultimos envios
   - Requisitos: REQ-18.1, REQ-18.2, REQ-18.3
