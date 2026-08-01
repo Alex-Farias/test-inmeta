@@ -674,6 +674,11 @@ correta é view materializada — registrar no README, não implementar.
 **Consequência.** Os três `deleted_at IS NULL` do CTE são o que faz REQ-14.5 valer para as
 três estatísticas de uma vez, já que todas derivam do mesmo `vinculo`.
 
+**Base vazia (REQ-16.6).** Sem nenhum vínculo/colaborador que sirva de base, as duas divisões
+protegidas por `NULLIF` retornam SQL `NULL`, convertido para `0` no repositório
+(`Number(null) === 0`). **`0` é o valor definido, por decisão** — não é o efeito colateral do
+cálculo, é o contrato: base vazia nunca lança erro, e ambas as medidas respondem `0`.
+
 ---
 
 ### D-10 — Arquitetura de módulos

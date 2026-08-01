@@ -133,5 +133,13 @@ describe('StatisticsRepository (integration)', () => {
       expect(depois.employeesFullyCompliantPercentage).toBe(100);
       expect(depois.employeesWithoutRequirements).toBe(1);
     });
+
+    it('responde sem erro em base vazia', async () => {
+      const resultado = await repository.calcularConformidadeGlobal();
+
+      expect(resultado.documentsSubmittedPercentage).toBe(0);
+      expect(resultado.employeesFullyCompliantPercentage).toBe(0);
+      expect(resultado.employeesWithoutRequirements).toBe(0);
+    });
   });
 });
