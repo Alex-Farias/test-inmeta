@@ -196,4 +196,171 @@ describe('StatisticsRepository — soft delete (integration)', () => {
       expect(depois.employeesFullyCompliantPercentage).toBe(100);
     });
   });
+
+  describe('rankingDeTiposPendentes', () => {
+    it('ignora tipo, vinculo e colaborador removidos', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+
+      // Controle: tipo ativo com pendencia real — a lista nao fica vazia por acidente.
+      const tipoControle = await documentTypes.save(documentTypes.create({ name: 'Controle' }));
+      const funcionarioControle = await employees.save(
+        employees.create({ name: 'Controle', email: 'controle@example.com' }),
+      );
+      await employeeDocuments.save(
+        employeeDocuments.create({
+          employeeId: funcionarioControle.id,
+          documentTypeId: tipoControle.id,
+        }),
+      );
+
+      // Tipo removido direto: nao deve aparecer na lista.
+      const tipoRemovido = await documentTypes.save(documentTypes.create({ name: 'Removido' }));
+      await documentTypes.softDelete(tipoRemovido.id);
+
+      // Tipo ativo com vinculo removido direto: aparece, com pendingCount 0.
+      const tipoComVinculoRemovido = await documentTypes.save(
+        documentTypes.create({ name: 'Vinculo removido' }),
+      );
+      const funcionarioA = await employees.save(
+        employees.create({ name: 'FuncA', email: 'funca@example.com' }),
+      );
+      const vinculoRemovido = await employeeDocuments.save(
+        employeeDocuments.create({
+          employeeId: funcionarioA.id,
+          documentTypeId: tipoComVinculoRemovido.id,
+        }),
+      );
+      await employeeDocuments.update(vinculoRemovido.id, {
+        deletedAt: new Date(),
+        deletionCause: 'MANUAL',
+      });
+
+      // Tipo ativo com colaborador removido direto: aparece, com pendingCount 0.
+      const tipoComColaboradorRemovido = await documentTypes.save(
+        documentTypes.create({ name: 'Colaborador removido' }),
+      );
+      const funcionarioB = await employees.save(
+        employees.create({ name: 'FuncB', email: 'funcb@example.com' }),
+      );
+      await employeeDocuments.save(
+        employeeDocuments.create({
+          employeeId: funcionarioB.id,
+          documentTypeId: tipoComColaboradorRemovido.id,
+        }),
+      );
+      await employees.softDelete(funcionarioB.id);
+
+      const resultado = await repository.rankingDeTiposPendentes();
+
+      expect(resultado.find((item) => item.documentType.id === tipoRemovido.id)).toBeUndefined();
+
+      expect(resultado.find((item) => item.documentType.id === tipoControle.id)?.pendingCount).toBe(
+        1,
+      );
+      expect(
+        resultado.find((item) => item.documentType.id === tipoComVinculoRemovido.id)?.pendingCount,
+      ).toBe(0);
+      expect(
+        resultado.find((item) => item.documentType.id === tipoComColaboradorRemovido.id)
+          ?.pendingCount,
+      ).toBe(0);
+    });
+  });
+
+  describe('ultimosEnvios', () => {
+    it('ignora envios de vinculo, colaborador ou tipo removido', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      // Valido: deve aparecer no resultado.
+      const tipoValido = await documentTypes.save(documentTypes.create({ name: 'Valido' }));
+      const funcionarioValido = await employees.save(
+        employees.create({ name: 'Valido', email: 'valido@example.com' }),
+      );
+      const vinculoValido = await employeeDocuments.save(
+        employeeDocuments.create({
+          employeeId: funcionarioValido.id,
+          documentTypeId: tipoValido.id,
+        }),
+      );
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoValido.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(),
+        }),
+      );
+
+      // Vinculo removido direto: a submission nao deve aparecer.
+      const tipoA = await documentTypes.save(documentTypes.create({ name: 'Tipo A' }));
+      const funcionarioA = await employees.save(
+        employees.create({ name: 'FuncA', email: 'funca2@example.com' }),
+      );
+      const vinculoRemovido = await employeeDocuments.save(
+        employeeDocuments.create({ employeeId: funcionarioA.id, documentTypeId: tipoA.id }),
+      );
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoRemovido.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(),
+        }),
+      );
+      await employeeDocuments.update(vinculoRemovido.id, {
+        deletedAt: new Date(),
+        deletionCause: 'MANUAL',
+      });
+
+      // Colaborador removido direto: a submission nao deve aparecer.
+      const tipoB = await documentTypes.save(documentTypes.create({ name: 'Tipo B' }));
+      const funcionarioRemovido = await employees.save(
+        employees.create({ name: 'FuncB', email: 'funcb2@example.com' }),
+      );
+      const vinculoDeColaboradorRemovido = await employeeDocuments.save(
+        employeeDocuments.create({ employeeId: funcionarioRemovido.id, documentTypeId: tipoB.id }),
+      );
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoDeColaboradorRemovido.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(),
+        }),
+      );
+      await employees.softDelete(funcionarioRemovido.id);
+
+      // Tipo removido direto: a submission nao deve aparecer.
+      const tipoRemovido = await documentTypes.save(documentTypes.create({ name: 'Tipo C' }));
+      const funcionarioC = await employees.save(
+        employees.create({ name: 'FuncC', email: 'funcc@example.com' }),
+      );
+      const vinculoDeTipoRemovido = await employeeDocuments.save(
+        employeeDocuments.create({
+          employeeId: funcionarioC.id,
+          documentTypeId: tipoRemovido.id,
+        }),
+      );
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculoDeTipoRemovido.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(),
+        }),
+      );
+      await documentTypes.softDelete(tipoRemovido.id);
+
+      const resultado = await repository.ultimosEnvios(20);
+
+      expect(resultado).toHaveLength(1);
+      expect(resultado[0].documentType.id).toBe(tipoValido.id);
+      expect(resultado[0].employee.id).toBe(funcionarioValido.id);
+    });
+  });
 });
