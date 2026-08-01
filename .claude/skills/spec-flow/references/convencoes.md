@@ -99,7 +99,9 @@ Confirme uma vez no primeiro commit com `git log -1 --format=%B`.
 - [ ] "Últimos envios" ignora envios de vínculos removidos
 - [ ] Re-vínculo após desvínculo funciona (índice parcial validado)
 - [ ] Envio para vínculo removido retorna 404, não 500
-- [ ] Vínculo com tipo removido é rejeitado com 422
+- [ ] Vínculo com tipo removido é rejeitado com 404 (`EntityNotFoundError`) — **não 422**;
+      `design.md` D-06 decide por não distinguir qual elo caiu, porque detalhar revelaria a
+      existência de registro removido a quem não deveria vê-lo
 - [ ] `grep -rn "DELETE FROM\|\.remove(" src/` não retorna nada relevante
 
 > A garantia **contínua** contra remoção física não é este grep: é a regra ESLint
