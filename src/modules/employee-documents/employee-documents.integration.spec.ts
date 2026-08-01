@@ -5,6 +5,7 @@ import { CreateEmployees1785416355470 } from '../../database/migrations/17854163
 import { CreateDocumentTypes1785446317559 } from '../../database/migrations/1785446317559-CreateDocumentTypes';
 import { CreateEmployeeDocuments1785453770311 } from '../../database/migrations/1785453770311-CreateEmployeeDocuments';
 import { CreateDocumentSubmissions1785470132175 } from '../../database/migrations/1785470132175-CreateDocumentSubmissions';
+import { EntityNotFoundError } from '../../shared/errors';
 import { TransactionRunner } from '../../shared/transaction/transaction-runner';
 import { StatisticsRepository } from '../statistics/statistics.repository';
 import { DocumentType } from '../document-types/domain/document-type.entity';
@@ -238,6 +239,78 @@ describe('EmployeeDocumentsService (integration)', () => {
       });
       expect(historicoAnterior.total).toBe(2);
       expect(historicoAnterior.items.map((item) => item.version).sort()).toEqual([1, 2]);
+    });
+  });
+
+  /**
+   * REQ-14.8 no caminho de desvinculacao (TASK-079). A simetria com o envio
+   * estava faltando: `desvincular` resolvia o vinculo por uma consulta sem
+   * JOIN, entao um vinculo de colaborador ou tipo removido — mas ainda nao
+   * marcado — passava, e a operacao seguia como se a cadeia estivesse viva.
+   *
+   * **O pai e removido direto pelo `DataSource`, sem passar pelo service.**
+   * Mesmo padrao de falsificacao de `submissions.integration.spec.ts` e da
+   * decisao em `design.md`, D-06: feito pelo service, a cascata ja teria
+   * marcado o vinculo e o caso passaria mesmo sem JOIN nenhum — provaria a
+   * propagacao, nao o requisito. Removendo o pai por fora, o unico motivo pelo
+   * qual o vinculo e recusado sao os JOINs de `findSubmittableById`.
+   *
+   * Falsificado antes de commitar: revertido `desvincular` para a consulta sem
+   * JOIN, os dois casos abaixo falham — a desvinculacao e aceita e grava
+   * `deletion_cause = 'MANUAL'` — enquanto "vinculo ja removido" em
+   * `employee-documents.service.spec.ts` continua passando, porque esse o
+   * filtro do alias principal ja cobre. E a medida exata do que os JOINs
+   * acrescentam aqui.
+   */
+  describe('desvincular com cadeia inativa', () => {
+    it('recusa desvinculação de vínculo com colaborador removido', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+      const diego = await employees.save(
+        employees.create({ name: 'Diego', email: 'diego@example.com' }),
+      );
+      const [vinculo] = await service.vincular({
+        employeeId: diego.id,
+        documentTypeIds: [cpf.id],
+      });
+
+      // Sem cascata: so o colaborador e marcado, o vinculo segue ativo.
+      await dataSource.query('UPDATE employees SET deleted_at = now() WHERE id = $1', [diego.id]);
+
+      await expect(service.desvincular(vinculo.id)).rejects.toThrow(EntityNotFoundError);
+
+      // Nenhuma escrita aconteceu: o vinculo continua sem causa de remocao.
+      const persistido = await dataSource
+        .getRepository(EmployeeDocument)
+        .findOne({ where: { id: vinculo.id }, withDeleted: true });
+      expect(persistido?.deletedAt).toBeNull();
+      expect(persistido?.deletionCause).toBeNull();
+    });
+
+    it('recusa desvinculação de vínculo com tipo removido', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+
+      const rg = await documentTypes.save(documentTypes.create({ name: 'RG' }));
+      const elisa = await employees.save(
+        employees.create({ name: 'Elisa', email: 'elisa@example.com' }),
+      );
+      const [vinculo] = await service.vincular({
+        employeeId: elisa.id,
+        documentTypeIds: [rg.id],
+      });
+
+      await dataSource.query('UPDATE document_types SET deleted_at = now() WHERE id = $1', [rg.id]);
+
+      await expect(service.desvincular(vinculo.id)).rejects.toThrow(EntityNotFoundError);
+
+      const persistido = await dataSource
+        .getRepository(EmployeeDocument)
+        .findOne({ where: { id: vinculo.id }, withDeleted: true });
+      expect(persistido?.deletedAt).toBeNull();
+      expect(persistido?.deletionCause).toBeNull();
     });
   });
 });

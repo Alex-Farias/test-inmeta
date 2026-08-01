@@ -456,6 +456,11 @@ rodam.
     encontrado para vínculo já removido" (REQ-04.5 não estava coberto pelo teste de
     repositório sozinho)
   - Commit: `feat(employee-documents)` · `2e22e05`
+  - **Consulta trocada pela TASK-079.** À época `desvincular` resolvia o vínculo por
+    `findActiveById`, suficiente para REQ-04.5. A TASK-079 levou o caminho para
+    `findSubmittableById` por causa de REQ-14.8, e `findActiveById` — que só este método
+    chamava — foi removido do repositório. O aceite acima não mudou; mudou o que passa a ser
+    recusado além dele.
 
 ---
 

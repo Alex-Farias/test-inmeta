@@ -484,13 +484,28 @@ garantia primária.
 **A regra vale igual no caminho de escrita.** O parágrafo acima fala de leitura, mas a mesma
 lógica decide REQ-06.5: o envio para um vínculo cujo colaborador está removido é rejeitado
 porque a consulta que resolve o vínculo faz o JOIN, não porque a cascata marcou o vínculo
-antes. `EmployeeDocumentsRepository.findSubmittableById` existe separado de `findActiveById`
-exatamente por isso — o segundo enxerga só `employee_documents.deleted_at`, e passaria um
-vínculo de colaborador removido que a cascata ainda não tivesse alcançado.
+antes. `EmployeeDocumentsRepository.findSubmittableById` carrega os dois JOINs exatamente por
+isso — o filtro automático do `@DeleteDateColumn` enxerga só `employee_documents.deleted_at`,
+e passaria um vínculo de colaborador removido que a cascata ainda não tivesse alcançado.
 
 Os dois JOINs cobrem três casos com um 404 só: vínculo inexistente ou removido (REQ-06.4),
 colaborador removido (REQ-06.5) e tipo removido (REQ-14.8). Não se distingue qual elo caiu —
 detalhar revelaria a existência de registro removido a quem não deveria vê-lo.
+
+**Todo caminho de escrita usa essa consulta, e por isso ela é única (TASK-079).** O parágrafo
+acima nasceu descrevendo o envio, mas REQ-14.8 fala de *qualquer* operação de escrita sobre
+registro removido, sem escopo. A desvinculação é escrita e estava de fora: resolvia o vínculo
+por um `findActiveById` sem JOIN, herdando da cascata justamente a garantia que D-06 recusa
+como primária. Sob READ COMMITTED (D-05), o intervalo entre essa leitura e o `UPDATE` admite
+remoção concorrente do colaborador — o estado não era hipótese.
+
+Isso vai **além de REQ-04.5**, que exige 404 apenas para vínculo removido ou inexistente: é
+defesa em profundidade simétrica à do envio, registrada aqui por ser decisão nova, e não
+consequência automática do requisito. A consequência prática é que `findActiveById` ficou sem
+chamador e foi removido — sobram dois `find...ById`, um para escrita (`findSubmittableById`,
+cadeia ativa) e um para histórico (`findAnyById`, REQ-09.4). Manter um terceiro sem uso
+convidaria exatamente a regressão que a tabela do docblock existe para impedir: trocar um pelo
+outro não dá erro de compilação.
 
 O teste que sustenta isso constrói o estado **sem** passar pela cascata, removendo o pai
 direto pelo `DataSource`. Feito pelo service, o vínculo já viria marcado e o caso passaria
@@ -498,9 +513,10 @@ mesmo sem JOIN nenhum — provaria a propagação, não o requisito. Verificado 
 retirados os JOINs, os casos de colaborador e tipo removidos falham; os de vínculo removido e
 inexistente continuam passando, porque esses o filtro do alias principal já cobre.
 
-**A desvinculação (REQ-04) ainda usa `findActiveById`**, sem os JOINs. Fica registrado como
-assimetria conhecida, com task própria em `tasks.md`; não foi corrigida de carona no commit
-de envio.
+**A assimetria da desvinculação foi fechada.** Ela usava `findActiveById`, sem os JOINs —
+registrada aqui como conhecida, com task própria em `tasks.md` em vez de corrigida de carona
+no commit de envio. A TASK-079 a levou para `findSubmittableById`, pelas razões dos dois
+parágrafos acima, e `findActiveById` saiu do repositório junto.
 
 ---
 

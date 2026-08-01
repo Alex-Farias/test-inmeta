@@ -67,36 +67,38 @@ export class EmployeeDocumentsRepository {
   }
 
   /**
-   * ── Os tres `find...ById`, e o que separa um do outro ──────────────────────
+   * ── Os dois `find...ById`, e o que separa um do outro ──────────────────────
    *
-   * Sao tres de proposito, com visibilidades diferentes de `deleted_at`. Antes
-   * de escrever um quarto, confira se um destes ja serve:
+   * Sao dois de proposito, com visibilidades diferentes de `deleted_at`. Antes
+   * de escrever um terceiro, confira se um destes ja serve:
    *
-   * | Metodo                | Enxerga                                  | Serve   |
-   * |-----------------------|------------------------------------------|---------|
-   * | `findActiveById`      | vinculo ativo                            | REQ-04.5|
-   * | `findSubmittableById` | + colaborador e tipo ativos, via JOIN    | REQ-06.5|
-   * | `findAnyById`         | qualquer vinculo que ja existiu          | REQ-09.4|
+   * | Metodo                | Enxerga                              | Serve              |
+   * |-----------------------|--------------------------------------|--------------------|
+   * | `findSubmittableById` | vinculo + colaborador e tipo ativos, | REQ-04.5, REQ-06.5,|
+   * |                       | via JOIN                             | REQ-14.8           |
+   * | `findAnyById`         | qualquer vinculo que ja existiu      | REQ-09.4           |
    *
-   * A ordem e de rigor decrescente. `findSubmittableById` e o mais restritivo
-   * porque escrever exige cadeia ativa (D-06); `findAnyById` e o mais permissivo
-   * porque o historico e a excecao declarada a REQ-14.2 e precisa responder
-   * sobre registro removido. Trocar um pelo outro nao da erro de compilacao e
-   * quebra um requisito em silencio — dai a tabela.
+   * `findSubmittableById` e o restritivo, e **todo** caminho de escrita passa
+   * por ele — envio, remocao de envio e desvinculacao — porque escrever exige
+   * cadeia ativa (D-06, REQ-14.8). `findAnyById` e o permissivo, porque o
+   * historico e a excecao declarada a REQ-14.2 e precisa responder sobre
+   * registro removido. Trocar um pelo outro nao da erro de compilacao e quebra
+   * um requisito em silencio — dai a tabela.
+   *
+   * Houve um terceiro, `findActiveById`, que enxergava so o proprio vinculo e
+   * servia a desvinculacao. A TASK-079 levou a desvinculacao para a consulta
+   * com JOIN e ele ficou sem chamador: removido em vez de mantido, para nao ser
+   * escolhido por engano por quem procurasse o mais simples.
    * ───────────────────────────────────────────────────────────────────────────
    */
-
-  /** `null` tanto para inexistente quanto para removido (D-08, REQ-04.5). */
-  findActiveById(id: string, manager?: EntityManager): Promise<EmployeeDocument | null> {
-    return this.repo(manager).findOneBy({ id });
-  }
 
   /**
    * Vinculo que **ja existiu**, ativo ou removido (REQ-09.4, REQ-14.6).
    *
    * `withDeleted` desliga o filtro do `@DeleteDateColumn`, e aqui isso e o
    * requisito: o historico responde sobre vinculo removido, e usar
-   * `findActiveById` daria 404 exatamente nos casos que REQ-09.4 manda atender.
+   * `findSubmittableById` daria 404 exatamente nos casos que REQ-09.4 manda
+   * atender.
    *
    * O que ele **nao** faz e apagar a distincao entre removido e inexistente.
    * Vinculo removido devolve a linha, e o historico sai; id que nunca existiu
@@ -109,16 +111,21 @@ export class EmployeeDocumentsRepository {
   }
 
   /**
-   * Vinculo apto a receber envio: ele proprio ativo, **e** de colaborador ativo,
-   * **e** de tipo de documento ativo. `null` em qualquer um dos casos, para que
-   * o service devolva 404 sem distinguir qual elo caiu (REQ-06.4, REQ-06.5,
-   * REQ-14.8).
+   * Vinculo apto a **receber escrita**: ele proprio ativo, **e** de colaborador
+   * ativo, **e** de tipo de documento ativo. `null` em qualquer um dos casos,
+   * para que o service devolva 404 sem distinguir qual elo caiu (REQ-04.5,
+   * REQ-06.4, REQ-06.5, REQ-14.8).
    *
-   * **Existe separado de `findActiveById` por causa dos dois JOINs.** O filtro
-   * automatico do `@DeleteDateColumn` cobre apenas o alias principal (D-06):
-   * `findActiveById` enxerga `employee_documents.deleted_at` e mais nada. Um
-   * vinculo cujo colaborador foi removido, mas que ainda nao foi marcado, passa
-   * por ele — e REQ-06.5 exige rejeitar exatamente esse caso.
+   * O nome fala de envio porque foi o primeiro caminho a precisar dele
+   * (TASK-043); desde a TASK-079 a desvinculacao usa a mesma consulta, porque
+   * REQ-14.8 vale para qualquer escrita sobre registro removido, nao so para
+   * envio.
+   *
+   * **Os dois JOINs sao a razao de ele existir.** O filtro automatico do
+   * `@DeleteDateColumn` cobre apenas o alias principal (D-06), ou seja
+   * `employee_documents.deleted_at` e mais nada. Um vinculo cujo colaborador foi
+   * removido, mas que ainda nao foi marcado, passaria por uma consulta sem os
+   * JOINs — e REQ-06.5 exige rejeitar exatamente esse caso.
    *
    * **Por que nao confiar na cascata.** Hoje remover um colaborador propaga a
    * remocao aos vinculos, entao na pratica o vinculo ja viria marcado. D-06 e

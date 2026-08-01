@@ -131,7 +131,7 @@ describe('SubmissionsService (integration)', () => {
 
   /**
    * REQ-06.4, REQ-06.5 e REQ-14.8 — os tres casos que `findSubmittableById`
-   * fecha, e a razao de ele existir separado de `findActiveById`.
+   * fecha, e a razao de ele carregar os dois JOINs.
    *
    * **Por que integracao e nao unidade.** O caso equivalente em
    * `submissions.service.spec.ts` mocka o repositorio: ele prova que o service

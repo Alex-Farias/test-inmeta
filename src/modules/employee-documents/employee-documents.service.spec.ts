@@ -9,7 +9,7 @@ import { EmployeeDocumentsService } from './employee-documents.service';
 describe('EmployeeDocumentsService', () => {
   let createMany: jest.Mock;
   let findActiveDocumentTypeIds: jest.Mock;
-  let findActiveById: jest.Mock;
+  let findSubmittableById: jest.Mock;
   let softDelete: jest.Mock;
   let findPending: jest.Mock;
   let run: jest.Mock;
@@ -20,13 +20,13 @@ describe('EmployeeDocumentsService', () => {
   beforeEach(() => {
     createMany = jest.fn();
     findActiveDocumentTypeIds = jest.fn().mockResolvedValue([]);
-    findActiveById = jest.fn();
+    findSubmittableById = jest.fn();
     softDelete = jest.fn();
     findPending = jest.fn().mockResolvedValue({ items: [], total: 0 });
     const repository = {
       createMany,
       findActiveDocumentTypeIds,
-      findActiveById,
+      findSubmittableById,
       softDelete,
       findPending,
     } as unknown as EmployeeDocumentsRepository;
@@ -104,7 +104,7 @@ describe('EmployeeDocumentsService', () => {
   });
 
   it('responde não encontrado para vínculo já removido', async () => {
-    findActiveById.mockResolvedValue(null);
+    findSubmittableById.mockResolvedValue(null);
 
     await expect(service.desvincular('inexistente')).rejects.toThrow(EntityNotFoundError);
 
@@ -112,7 +112,7 @@ describe('EmployeeDocumentsService', () => {
   });
 
   it('grava causa MANUAL ao desvincular vínculo ativo', async () => {
-    findActiveById.mockResolvedValue({ id: 'vinculo-1' });
+    findSubmittableById.mockResolvedValue({ id: 'vinculo-1' });
 
     await service.desvincular('vinculo-1');
 

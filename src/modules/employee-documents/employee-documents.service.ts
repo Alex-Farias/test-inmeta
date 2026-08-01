@@ -63,9 +63,16 @@ export class EmployeeDocumentsService {
    * Desvinculação é não crítica (D-04): escrita de linha única, e o `CHECK`
    * de D-12 garante a invariante entre `deleted_at`/`deletion_cause` por DDL
    * — sem `TransactionRunner` aqui, ao contrário de `vincular`.
+   *
+   * `findSubmittableById`, o mesmo do envio: desvincular é escrita, e REQ-14.8
+   * vale para qualquer escrita sobre registro removido — não só para envio.
+   * Uma consulta sem os JOINs aceitaria vínculo de colaborador ou tipo já
+   * removido que a cascata ainda não tivesse alcançado, herdando dela a
+   * garantia que D-06 recusa como primária. Vai além de REQ-04.5 de propósito;
+   * a decisão está registrada em `design.md`, D-06.
    */
   async desvincular(id: string): Promise<void> {
-    const vinculo = await this.repository.findActiveById(id);
+    const vinculo = await this.repository.findSubmittableById(id);
     if (!vinculo) {
       throw new EntityNotFoundError('Vinculo nao encontrado.');
     }
