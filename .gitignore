@@ -18,6 +18,10 @@ coverage/
 test-results/
 playwright-report/
 
+# husky (TASK-072): "_" e reconstruido por `npm install` (script "prepare"),
+# so o hook em si (.husky/commit-msg) e entregavel.
+.husky/_/
+
 # dumps de banco — nunca versionados.
 # *.sql não entra aqui: D-11 prevê SQL escrito à mão em migration.
 *.dump
