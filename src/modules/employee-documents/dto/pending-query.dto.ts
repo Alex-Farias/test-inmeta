@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsUUID } from 'class-validator';
 
 import { PaginationQueryDto } from '../../../shared/pagination/pagination-query.dto';
@@ -9,10 +10,12 @@ import { PaginationQueryDto } from '../../../shared/pagination/pagination-query.
  * `forbidNonWhitelisted` (REQ-19.6/19.7) e rejeitaria campo nao mapeado.
  */
 export class PendingQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID('4')
   employeeId?: string;
 
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID('4')
   documentTypeId?: string;

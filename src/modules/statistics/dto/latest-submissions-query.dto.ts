@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsInt, IsOptional, Min } from 'class-validator';
 
@@ -11,6 +12,11 @@ import { LIMITE_PADRAO, LIMITE_TETO } from '../../../shared/pagination/paginatio
  * paginada (não há `page`/`total` que fizesse sentido aqui).
  */
 export class LatestSubmissionsQueryDto {
+  @ApiPropertyOptional({
+    minimum: 1,
+    default: LIMITE_PADRAO,
+    description: `Top-N, sem paginação. Limitado a ${LIMITE_TETO} de forma silenciosa quando excedido.`,
+  })
   @IsOptional()
   @Transform(({ value }: { value: unknown }) => {
     const numero = Number(value);

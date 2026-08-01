@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
   CreateDateColumn,
@@ -20,9 +21,11 @@ import {
  */
 @Entity('document_submissions')
 export class DocumentSubmission {
+  @ApiProperty({ format: 'uuid' })
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @ApiProperty({ format: 'uuid' })
   @Column({ name: 'employee_document_id', type: 'uuid' })
   employeeDocumentId!: string;
 
@@ -33,6 +36,7 @@ export class DocumentSubmission {
    * `COALESCE(MAX(version), 0) + 1` sobre todas as submissions do vinculo,
    * inclusive removidas (REQ-08.4).
    */
+  @ApiProperty()
   @Column({ type: 'integer' })
   version!: number;
 
@@ -40,19 +44,24 @@ export class DocumentSubmission {
    * No maximo um `true` por vinculo, garantido por `uq_submission_active`
    * (D-02). A garantia vive no schema, nao em disciplina de codigo.
    */
+  @ApiProperty()
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
 
   /** REQ-06.3 — o instante em que a entrega ocorreu. */
+  @ApiProperty()
   @Column({ name: 'submitted_at', type: 'timestamptz' })
   submittedAt!: Date;
 
+  @ApiProperty()
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
+  @ApiProperty()
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
 
+  @ApiProperty({ nullable: true, type: String })
   @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz' })
   deletedAt!: Date | null;
 }

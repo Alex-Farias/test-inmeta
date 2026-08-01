@@ -1,7 +1,10 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+import { ErrorResponseDto } from '../../shared/filters/error-response.dto';
 import { PaginationQueryDto } from '../../shared/pagination/pagination-query.dto';
 import { DocumentSubmission } from './domain/document-submission.entity';
+import { SubmissionHistoryResponseDto } from './dto/submission-history-response.dto';
 import { HistoricoDeEnvios, SubmissionsService } from './submissions.service';
 
 /**
@@ -12,12 +15,27 @@ import { HistoricoDeEnvios, SubmissionsService } from './submissions.service';
  * `POST` sem corpo — upload e armazenamento de arquivo estao fora de escopo, e
  * o enunciado pede a representacao logica do envio.
  */
+@ApiTags('submissions')
+@ApiParam({ name: 'employeeDocumentId', format: 'uuid' })
 @Controller('employee-documents/:employeeDocumentId/submissions')
 export class SubmissionsController {
   constructor(private readonly service: SubmissionsService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Envia ou reenvia documento, com versão incrementada (REQ-06, REQ-07)' })
+  @ApiResponse({ status: HttpStatus.CREATED, type: DocumentSubmission })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    type: ErrorResponseDto,
+    description:
+      'Vínculo removido/inexistente ou cadeia (colaborador/tipo) removida (REQ-06.4, REQ-06.5, REQ-14.8).',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    type: ErrorResponseDto,
+    description: 'CONCURRENT_SUBMISSION ou VERSION_CONFLICT (D-14).',
+  })
   enviar(@Param('employeeDocumentId') employeeDocumentId: string): Promise<DocumentSubmission> {
     return this.service.enviar(employeeDocumentId);
   }
@@ -29,6 +47,17 @@ export class SubmissionsController {
    * propria sugeriria que sao recursos diferentes.
    */
   @Get()
+  @ApiOperation({
+    summary: 'Histórico de versões, ativas e inativas (REQ-09)',
+    description:
+      'Continua acessível mesmo com vínculo, colaborador ou tipo removidos — exceção declarada a REQ-14.2.',
+  })
+  @ApiResponse({ status: HttpStatus.OK, type: SubmissionHistoryResponseDto })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    type: ErrorResponseDto,
+    description: 'Vínculo que nunca existiu (distinto de removido, que responde 200).',
+  })
   consultarHistorico(
     @Param('employeeDocumentId') employeeDocumentId: string,
     @Query() pagination: PaginationQueryDto,
@@ -47,6 +76,9 @@ export class SubmissionsController {
    */
   @Delete('active')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove o envio ativo, sem reativar o anterior (REQ-08)' })
+  @ApiResponse({ status: HttpStatus.NO_CONTENT })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, type: ErrorResponseDto })
   removerEnvioAtivo(@Param('employeeDocumentId') employeeDocumentId: string): Promise<void> {
     return this.service.removerEnvioAtivo(employeeDocumentId);
   }

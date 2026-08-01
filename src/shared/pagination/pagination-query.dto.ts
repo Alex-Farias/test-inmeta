@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsInt, IsOptional, Min } from 'class-validator';
 
@@ -11,11 +12,17 @@ export const LIMITE_TETO = 100;
  * (REQ-11.6). Ausencia de parametro aplica o padrao documentado (REQ-11.3).
  */
 export class PaginationQueryDto {
+  @ApiPropertyOptional({ minimum: 1, default: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
   page: number = 1;
 
+  @ApiPropertyOptional({
+    minimum: 1,
+    default: LIMITE_PADRAO,
+    description: `Limitado a ${LIMITE_TETO} de forma silenciosa quando excedido (REQ-11.4).`,
+  })
   @IsOptional()
   @Transform(({ value }: { value: unknown }) => {
     const numero = Number(value);

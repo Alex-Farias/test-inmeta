@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
   CreateDateColumn,
@@ -21,24 +22,34 @@ export type DeletionCause = 'MANUAL' | 'TYPE_REMOVED' | 'EMPLOYEE_REMOVED';
  */
 @Entity('employee_documents')
 export class EmployeeDocument {
+  @ApiProperty({ format: 'uuid' })
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @ApiProperty({ format: 'uuid' })
   @Column({ name: 'employee_id', type: 'uuid' })
   employeeId!: string;
 
+  @ApiProperty({ format: 'uuid' })
   @Column({ name: 'document_type_id', type: 'uuid' })
   documentTypeId!: string;
 
+  @ApiProperty({
+    enum: ['MANUAL', 'TYPE_REMOVED', 'EMPLOYEE_REMOVED'],
+    nullable: true,
+  })
   @Column({ name: 'deletion_cause', type: 'varchar', length: 20, nullable: true })
   deletionCause!: DeletionCause | null;
 
+  @ApiProperty()
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
+  @ApiProperty()
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
 
+  @ApiProperty({ nullable: true, type: String })
   @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz' })
   deletedAt!: Date | null;
 }
