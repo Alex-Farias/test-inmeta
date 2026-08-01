@@ -5,11 +5,13 @@ import { DataSource, EntityManager } from 'typeorm';
 export interface ConformidadeGlobal {
   employeesFullyCompliantPercentage: number;
   documentsSubmittedPercentage: number;
+  employeesWithoutRequirements: number;
 }
 
 interface LinhaDeConformidade {
   documents_submitted_percentage: string | null;
   employees_fully_compliant_percentage: string | null;
+  employees_without_requirements: string;
 }
 
 /**
@@ -23,7 +25,7 @@ export class StatisticsRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   /**
-   * As duas leituras de D-09 num único round-trip. `vinculo` é vínculo ativo
+   * As três leituras de D-09 num único round-trip. `vinculo` é vínculo ativo
    * de colaborador ativo e tipo ativo (os três `JOIN ... AND deleted_at IS
    * NULL` são D-06 — join manual não recebe o filtro automático do
    * `@DeleteDateColumn`), com `entregue` via `EXISTS` contra submission ativa.
@@ -31,9 +33,14 @@ export class StatisticsRepository {
    * `employees_fully_compliant_percentage` agrupa por colaborador
    * (`bool_and(entregue)`) numa CTE separada e agrega por subquery escalar.
    *
-   * `NULLIF` nas duas divisões: sem base a expressão retorna `NULL`, não
-   * lança "division by zero" — é como D-09 já está escrita, não é a prova de
-   * REQ-16.6 (essa fica para a TASK-055).
+   * `employees_without_requirements` (REQ-16.4) conta colaborador ativo sem
+   * nenhuma linha em `por_colaborador` — ela já exclui por construção quem
+   * não tem vínculo (deriva de `vinculo`, que vem de `employee_documents`);
+   * esta subquery só torna essa exclusão visível como número, em vez de
+   * silenciosa no denominador.
+   *
+   * `NULLIF` nas duas divisões: sem base a expressão retorna `NULL`, e
+   * `Number(null)` é `0` — contrato de REQ-16.6 fixado em D-09 (TASK-055).
    */
   async calcularConformidadeGlobal(manager?: EntityManager): Promise<ConformidadeGlobal> {
     const executor = manager ?? this.dataSource;
@@ -65,7 +72,12 @@ export class StatisticsRepository {
         (
           SELECT 100.0 * count(*) FILTER (WHERE conforme) / NULLIF(count(*), 0)
           FROM por_colaborador
-        ) AS employees_fully_compliant_percentage
+        ) AS employees_fully_compliant_percentage,
+        (
+          SELECT count(*) FROM employees e
+          WHERE e.deleted_at IS NULL
+            AND NOT EXISTS (SELECT 1 FROM por_colaborador pc WHERE pc.employee_id = e.id)
+        ) AS employees_without_requirements
       FROM vinculo;
     `);
 
@@ -74,6 +86,7 @@ export class StatisticsRepository {
     return {
       documentsSubmittedPercentage: Number(linha.documents_submitted_percentage),
       employeesFullyCompliantPercentage: Number(linha.employees_fully_compliant_percentage),
+      employeesWithoutRequirements: Number(linha.employees_without_requirements),
     };
   }
 }

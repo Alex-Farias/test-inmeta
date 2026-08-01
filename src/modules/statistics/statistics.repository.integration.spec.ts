@@ -98,5 +98,40 @@ describe('StatisticsRepository (integration)', () => {
       // 1 dos 2 colaboradores entregou todos os documentos exigidos.
       expect(resultado.employeesFullyCompliantPercentage).toBe(50);
     });
+
+    it('nao altera o percentual ao cadastrar colaborador sem vinculo, e informa a quantidade separadamente', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+
+      const anaCpf = await employeeDocuments.save(
+        employeeDocuments.create({ employeeId: ana.id, documentTypeId: cpf.id }),
+      );
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: anaCpf.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(),
+        }),
+      );
+
+      const antes = await repository.calcularConformidadeGlobal();
+      expect(antes.documentsSubmittedPercentage).toBe(100);
+      expect(antes.employeesFullyCompliantPercentage).toBe(100);
+      expect(antes.employeesWithoutRequirements).toBe(0);
+
+      // Bruno nao tem nenhum vinculo ativo -> fora do denominador, contado a parte.
+      await employees.save(employees.create({ name: 'Bruno', email: 'bruno@example.com' }));
+
+      const depois = await repository.calcularConformidadeGlobal();
+      expect(depois.documentsSubmittedPercentage).toBe(100);
+      expect(depois.employeesFullyCompliantPercentage).toBe(100);
+      expect(depois.employeesWithoutRequirements).toBe(1);
+    });
   });
 });
