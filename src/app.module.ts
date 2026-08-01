@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { LoggerModule } from 'nestjs-pino';
 
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
@@ -11,6 +12,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
 import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
 import { HealthModule } from './shared/health/health.module';
 import { RequestIdMiddleware } from './shared/http/request-id.middleware';
+import { pinoParams } from './shared/logging/pino.params';
 import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
 
 @Module({
@@ -23,6 +25,7 @@ import { criarValidationPipe } from './shared/pipes/validation-pipe.factory';
       envFilePath: '.env',
       validate: validateEnv,
     }),
+    LoggerModule.forRoot(pinoParams),
     DatabaseModule,
     EmployeesModule,
     DocumentTypesModule,

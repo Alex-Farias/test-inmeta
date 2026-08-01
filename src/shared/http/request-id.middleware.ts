@@ -3,8 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
-export const REQUEST_ID_HEADER = 'x-request-id';
-
 declare module 'express-serve-static-core' {
   interface Request {
     requestId?: string;
@@ -12,27 +10,23 @@ declare module 'express-serve-static-core' {
 }
 
 /**
- * Origem unica do identificador de requisicao (D-08).
+ * Não gera mais o id (D-08) — quem decide é `pino.params.ts#genReqId`. A
+ * geração migrou para lá porque `LoggerModule` do nestjs-pino é `@Global()`,
+ * e módulo global tem middleware aplicado antes do módulo raiz: quando este
+ * middleware roda, `request.id` já foi decidido pelo pino. Ver o comentário
+ * em `pino.params.ts` para a explicação completa.
  *
- * Fica em middleware, e nao no exception filter, porque o filter so roda quando
- * algo falha: se o id nascesse la, apenas respostas de erro o teriam, e
- * REQ-20.3 — mesmo id em todos os logs da requisicao, inclusive nas
- * bem-sucedidas — obrigaria a mover a geracao depois.
- *
- * Um `x-request-id` recebido e preservado, para nao quebrar a correlacao de
- * quem chama de fora ja carregando o proprio rastro.
+ * Este middleware só garante que o id existe em `request.requestId` — com
+ * fallback próprio caso o pino não esteja no ar, para não deixar a requisição
+ * sem id em silêncio — e o ecoa no cabeçalho de resposta.
  */
 @Injectable()
 export class RequestIdMiddleware implements NestMiddleware {
   use(request: Request, response: Response, next: NextFunction): void {
-    const recebido = request.headers[REQUEST_ID_HEADER];
-    const informado = Array.isArray(recebido) ? recebido[0] : recebido;
-
-    const requestId = informado?.trim() ? informado.trim() : randomUUID();
+    const requestId =
+      typeof request.id === 'string' && request.id.trim() ? request.id : randomUUID();
 
     request.requestId = requestId;
-    // Ecoado no cabecalho para que o cliente consiga citar o id ao reportar um
-    // problema, mesmo numa resposta de sucesso.
     response.setHeader('X-Request-Id', requestId);
 
     next();

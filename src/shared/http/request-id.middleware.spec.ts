@@ -2,8 +2,8 @@ import type { NextFunction, Request, Response } from 'express';
 
 import { RequestIdMiddleware } from './request-id.middleware';
 
-function dublar(headers: Request['headers'] = {}) {
-  const request = { headers } as Request;
+function dublar(id?: unknown) {
+  const request = { id } as Request;
   const cabecalhos = new Map<string, string>();
   const response = {
     setHeader(nome: string, valor: string) {
@@ -20,36 +20,36 @@ const FORMATO_UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}
 describe('RequestIdMiddleware', () => {
   const middleware = new RequestIdMiddleware();
 
-  it('gera um identificador quando a requisição não traz nenhum', () => {
-    const { request, response, next, cabecalhos } = dublar();
+  it('propaga o id que o pino já decidiu (request.id) para request.requestId e para o header', () => {
+    const { request, response, next, cabecalhos } = dublar('id-decidido-pelo-pino');
+
+    middleware.use(request, response, next);
+
+    expect(request.requestId).toBe('id-decidido-pelo-pino');
+    expect(cabecalhos.get('X-Request-Id')).toBe('id-decidido-pelo-pino');
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('gera um id de reserva quando request.id não existe, para nunca ficar sem id', () => {
+    const { request, response, next, cabecalhos } = dublar(undefined);
 
     middleware.use(request, response, next);
 
     expect(request.requestId).toMatch(FORMATO_UUID_V4);
     expect(cabecalhos.get('X-Request-Id')).toBe(request.requestId);
-    expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('preserva o x-request-id recebido, para não quebrar correlação externa', () => {
-    const { request, response, next, cabecalhos } = dublar({ 'x-request-id': 'rastro-de-fora' });
-
-    middleware.use(request, response, next);
-
-    expect(request.requestId).toBe('rastro-de-fora');
-    expect(cabecalhos.get('X-Request-Id')).toBe('rastro-de-fora');
-  });
-
-  it('ignora x-request-id vazio ou só com espaço e gera um novo', () => {
-    const { request, response, next } = dublar({ 'x-request-id': '   ' });
+  it('gera um id de reserva quando request.id não é string (defesa contra o tipo ReqId do pino-http)', () => {
+    const { request, response, next } = dublar(42);
 
     middleware.use(request, response, next);
 
     expect(request.requestId).toMatch(FORMATO_UUID_V4);
   });
 
-  it('gera identificadores distintos entre requisições', () => {
-    const primeira = dublar();
-    const segunda = dublar();
+  it('gera identificadores de reserva distintos entre requisições', () => {
+    const primeira = dublar(undefined);
+    const segunda = dublar(undefined);
 
     middleware.use(primeira.request, primeira.response, primeira.next);
     middleware.use(segunda.request, segunda.response, segunda.next);
