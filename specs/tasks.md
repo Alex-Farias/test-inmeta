@@ -1050,13 +1050,19 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     porque só provar "não muda" deixaria a segunda metade do Aceite (contagem separada) sem
     teste.
 
-- [ ] **TASK-055** · P1 · `statistics` · retorna valor definido para base vazia
+- [x] **TASK-055** · P1 · `statistics` · retorna valor definido para base vazia
   - Requisitos: REQ-16.6
   - Depende de: TASK-053
   - Aceite: "SE não houver nenhum registro que sirva de base para uma medida, ENTÃO o sistema
     DEVE retornar um valor definido para ela, e não erro" — `NULLIF` em toda divisão
   - Teste: `statistics.repository.integration.spec.ts` → "responde sem erro em base vazia"
-  - Commit: `feat(statistics)`
+  - Commit: `test(statistics)` · `bd9d6db`
+  - **Sem código de produção novo** — mesmo padrão de TASK-018/019/027/035/050/052: o
+    `NULLIF` já presente desde D-09/TASK-053 fazia a query devolver `NULL` sobre base vazia,
+    e `Number(null)` já era `0`. Re-escopado de `feat` para `test`.
+  - **Valor `0` confirmado com o humano antes da implementação**, por não estar fixado em
+    `design.md` (mesmo padrão de confirmação da TASK-011 para os números de paginação): D-09
+    ganhou a nota "base vazia → `0`, por decisão, não efeito colateral do cálculo".
 
 - [ ] **TASK-056** · P1 · `statistics` · adiciona tipos mais pendentes
   - Requisitos: REQ-17.1, REQ-17.2, REQ-17.3
