@@ -1363,12 +1363,35 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
     três documentos), mesmo raciocínio da suíte E2E (TASK-069): reaproveitar validação e
     transação existentes em vez de duplicar regra de negócio num script solto.
 
-- [ ] **TASK-072** · P3 · `infra` · adiciona commitlint
+- [x] **TASK-072** · P3 · `infra` · adiciona commitlint
   - Requisitos: —
   - Depende de: TASK-001
   - Aceite: commit fora do padrão de `convencoes.md` é rejeitado
-  - Teste: verificação manual documentada no README
-  - Commit: `chore(infra)`
+  - Teste: verificação manual, duas partes — regra isolada (`echo "Update stuff" | npx
+    commitlint`, recusada) e hook de verdade (`git commit --allow-empty -m "Update stuff"`,
+    rejeitado pelo hook, nenhum commit criado, `git log` idêntico antes/depois). Saída real
+    inspecionada nas duas.
+  - Commit: `chore(infra)` · `a74f8f7`
+  - **Sem decisão travada** em `design.md`/`stack.md` para esta task nem para a TASK-071 —
+    únicas duas do projeto sem precedente arquitetural a seguir. `commitlint.config.js`
+    estende `@commitlint/config-conventional` (reaproveita o parser `type(scope): assunto`) e
+    sobrescreve só o que `convencoes.md` restringe além do genérico: `type-enum`/`scope-enum`
+    fechados nos sete tipos e oito escopos do projeto.
+  - **`husky`, não hook manual em `.git/hooks/`** — não sobrevive a `git clone` e contradiria
+    a validação de clone limpo da TASK-076. Script `prepare` reinstala o hook a cada
+    `npm install`; `.husky/_` (helper interno, reconstruído) fica fora do git via
+    `.gitignore`, só `.husky/commit-msg` é entregável.
+  - **Bug real, encontrado no primeiro commit que passou pelo hook de verdade** — corrigido em
+    `fix(infra)` · `756c13f`, no commit seguinte a este. `subject-case` tinha sido
+    sobrescrito como `always`/`lower-case`, que rejeita **qualquer** letra maiúscula; mas
+    "marca TASK-072 concluida em tasks.md" — o padrão usado em toda marcação de task
+    concluída deste projeto — tem `TASK-072` maiúsculo por ser identificador, não início de
+    frase. O default de `config-conventional` já resolve isso certo
+    (`never`/`[sentence-case, start-case, pascal-case, upper-case]`: rejeita frase
+    capitalizada, permite identificador maiúsculo embutido); `subject-full-stop` e
+    `header-max-length` também já vinham certos do default (100, não 72) e eram redeclaração
+    sem efeito. Os dois testes originais (mensagem genérica / mensagem no padrão) não
+    cobriam esse caso — só apareceu ao tentar commitar de verdade.
 
 ---
 
