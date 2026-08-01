@@ -1268,12 +1268,22 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
     garantia de hoje é por construção; os paths (`req.body.*`, `body.*`, `email`/`name`
     soltos) cobrem os formatos mais prováveis de um log explícito futuro.
 
-- [ ] **TASK-067** · P2 · `shared` · habilita log legivel fora de producao
+- [x] **TASK-067** · P2 · `shared` · habilita log legivel fora de producao
   - Requisitos: REQ-20.5
   - Depende de: TASK-065
   - Aceite: transport legível por humano ativo apenas fora de produção
-  - Teste: verificação manual documentada no README
-  - Commit: `feat(shared)`
+  - Teste: verificação manual — aplicação subida com `NODE_ENV=development` mostra log
+    multilinha legível via `pino-pretty`; subida com `NODE_ENV=production`, JSON de uma
+    linha por registro. Confirmado nos dois modos, saída real inspecionada.
+  - Commit: `feat(shared)` · `d5b6382`
+  - **`loadDotenv()` chamado também aqui**, não só em `data-source.ts`: este arquivo não
+    deveria depender da ordem de import de `app.module.ts` para saber o ambiente. `dotenv`
+    não sobrescreve variável já presente, chamada repetida é sem custo.
+  - **Ajuste em `logger.integration.spec.ts` (TASK-065)**: `transport` e `stream` são
+    mutuamente exclusivos no pino. Sem desligar `transport` na injeção do stream de teste, a
+    suíte passaria a escrever de verdade via `pino-pretty` (o ambiente do Jest não é
+    produção) e a captura ficaria vazia — falha real, detectada e corrigida antes deste
+    commit.
 
 - [ ] **TASK-068** · P2 · `infra` · adiciona documentacao openapi
   - Requisitos: REQ-22.1, REQ-22.2, REQ-22.3
