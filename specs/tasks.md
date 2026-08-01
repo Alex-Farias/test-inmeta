@@ -1316,7 +1316,7 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
     sem segunda definição — mas ficar fora da lista deixaria a auditoria de rastreabilidade da
     TASK-074 sem onde marcar o requisito como coberto.
 
-- [ ] **TASK-069** · P2 · `infra` · adiciona suite e2e do fluxo completo
+- [x] **TASK-069** · P2 · `infra` · adiciona suite e2e do fluxo completo
   - Requisitos: REQ-06, REQ-07, REQ-09, REQ-10, REQ-16
   - **Exceção de nível:** os REQs que ela exercita são P0, mas a suíte E2E é diferencial
     declarado do enunciado, e a cobertura P0 desses REQs já está garantida pelas tasks de
@@ -1324,8 +1324,23 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
   - Depende de: TASK-060, TASK-002
   - Aceite: vincular, enviar, reenviar, consultar histórico, remover e conferir estatística,
     via HTTP contra o `docker-compose`
-  - Teste: `e2e/fluxo-completo.spec.ts` → "percorre o ciclo de vida de um documento"
-  - Commit: `feat(infra)`
+  - Teste: `test/e2e/fluxo-completo.spec.ts` → "percorre o ciclo de vida de um documento"
+  - Commit: `feat(infra)` · `3b2bb77`
+  - **`webServer` do Playwright sobe a aplicação (`npm run start`)**, com prontidão lida em
+    `/health` (TASK-064) — só o Postgres via `docker compose up -d` + `npm run migration:run`
+    precisa estar de pé antes, como `stack.md` já previa. Evita depender de um segundo
+    terminal manual.
+  - **`/statistics/overview` verificado por formato, não valor exato.** O Postgres do compose
+    é persistente entre execuções (ao contrário do Testcontainers efêmero da suíte de
+    integração), então percentuais exatos dependeriam de isolar o banco — que não é o papel
+    desta camada (`design.md` §5: E2E prova contrato HTTP, a matemática já está provada pelos
+    testes de integração de `statistics`, TASK-053 a TASK-060). Os passos de pendentes, em
+    contraste, filtram por `employeeId` do próprio teste e afirmam valor exato.
+  - **`tsconfig.build.json` ganhou `playwright.config.ts` no `exclude`** — `rootDir` fixo em
+    `src/` rejeitava qualquer `.ts` de configuração solto na raiz do projeto, mesmo motivo já
+    registrado ali para `jest.config.ts`.
+  - **Falsificado antes de commitar.** Trocado o `total` esperado do histórico por `999`, o
+    teste falhou mostrando o valor real recebido (`2`); revertido antes do commit.
 
 ---
 
