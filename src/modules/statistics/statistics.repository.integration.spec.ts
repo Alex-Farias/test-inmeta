@@ -302,5 +302,76 @@ describe('StatisticsRepository (integration)', () => {
       expect(resultado).toHaveLength(2);
       expect(resultado.map((item) => item.documentType.id)).toEqual([tipos[0].id, tipos[1].id]);
     });
+
+    it('inclui versao superada nos ultimos envios', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const cpf = await documentTypes.save(documentTypes.create({ name: 'CPF' }));
+      const vinculo = await employeeDocuments.save(
+        employeeDocuments.create({ employeeId: ana.id, documentTypeId: cpf.id }),
+      );
+
+      const agora = Date.now();
+      const v1 = await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculo.id,
+          version: 1,
+          isActive: true,
+          submittedAt: new Date(agora - 1000),
+        }),
+      );
+      // Reenvio: desativa a v1 (superada) e ativa a v2 — mesma sequencia de `enviar` (D-16).
+      await submissions.update(v1.id, { isActive: false });
+      await submissions.save(
+        submissions.create({
+          employeeDocumentId: vinculo.id,
+          version: 2,
+          isActive: true,
+          submittedAt: new Date(agora),
+        }),
+      );
+
+      const resultado = await repository.ultimosEnvios(20);
+
+      expect(resultado.map((item) => item.version).sort()).toEqual([1, 2]);
+    });
+
+    it('desempata por instante identico de forma deterministica', async () => {
+      const employees = dataSource.getRepository(Employee);
+      const documentTypes = dataSource.getRepository(DocumentType);
+      const employeeDocuments = dataSource.getRepository(EmployeeDocument);
+      const submissions = dataSource.getRepository(DocumentSubmission);
+
+      const ana = await employees.save(employees.create({ name: 'Ana', email: 'ana@example.com' }));
+      const [cpf, rg] = await Promise.all(
+        ['CPF', 'RG'].map((nome) => documentTypes.save(documentTypes.create({ name: nome }))),
+      );
+      const instante = new Date();
+
+      for (const tipo of [cpf, rg]) {
+        const vinculo = await employeeDocuments.save(
+          employeeDocuments.create({ employeeId: ana.id, documentTypeId: tipo.id }),
+        );
+        await submissions.save(
+          submissions.create({
+            employeeDocumentId: vinculo.id,
+            version: 1,
+            isActive: true,
+            submittedAt: instante,
+          }),
+        );
+      }
+
+      const primeira = await repository.ultimosEnvios(20);
+      const segunda = await repository.ultimosEnvios(20);
+
+      expect(primeira.map((item) => item.documentType.id)).toEqual(
+        segunda.map((item) => item.documentType.id),
+      );
+    });
   });
 });
