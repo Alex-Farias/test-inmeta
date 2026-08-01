@@ -1143,14 +1143,24 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     segundo vínculo **não entregue** que a remoção deveria excluir: se a exclusão falhar, o
     percentual final fica abaixo de 100, não passa por acidente em 0/0.
 
-- [ ] **TASK-060** · P0 · `statistics` · exclui removidos dos rankings e dos ultimos envios
+- [x] **TASK-060** · P0 · `statistics` · exclui removidos dos rankings e dos ultimos envios
   - Requisitos: REQ-17.4, REQ-18.4, REQ-14.5
   - Depende de: TASK-056, TASK-058, TASK-032, TASK-034
   - Aceite: tipos mais pendentes ignora removidos nos três níveis; últimos envios ignora
     envios de vínculo, colaborador ou tipo removido
   - Teste: `statistics.softdelete.integration.spec.ts` → "ranking e últimos envios ignoram
     removidos"
-  - Commit: `test(statistics)`
+  - Commit: `test(statistics)` · `557af3f`
+  - **Sem código de produção novo** — mesmo padrão de TASK-018/019/027/035/050/052: os JOINs
+    de D-06 já protegiam `rankingDeTiposPendentes` (TASK-056) e `ultimosEnvios` (TASK-057)
+    desde que foram escritos.
+  - **Nome declarado expandido para dois `it()`, um por método** — "ranking e últimos envios
+    ignoram removidos" viraria mais de três asserções independentes num só teste. Ao
+    contrário da TASK-059 (um `it` por medida), aqui cada `it` cobre os três níveis do
+    próprio Aceite (tipo/vínculo/colaborador) num só cenário, porque é a mesma query e a
+    mesma invariante provada três vezes, não três requisitos distintos — mesmo raciocínio de
+    combinação de TASK-048/051.
+  - Remoção direto pelo `DataSource`, sem cascata (TASK-032/034), mesma técnica da TASK-059.
 
 ---
 
