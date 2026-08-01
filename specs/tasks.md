@@ -781,22 +781,33 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     removido e inexistente continuam passando, porque esses o filtro automático do alias
     principal já cobre. É a medida exata do que os JOINs acrescentam.
 
-- [ ] **TASK-079** · P1 · `employee-documents` · exige cadeia ativa tambem na desvinculacao
+- [x] **TASK-079** · P1 · `employee-documents` · exige cadeia ativa tambem na desvinculacao
   - Requisitos: REQ-14.8
   - Depende de: TASK-043
   - Aceite: desvinculação de vínculo cujo colaborador ou tipo esteja removido — ainda que o
     próprio vínculo não esteja marcado — responde que o recurso não foi encontrado, e não com
     erro interno
   - Teste: `employee-documents.integration.spec.ts` → "recusa desvinculação de vínculo com
-    colaborador removido"
-  - Commit: `feat(employee-documents)`
+    colaborador removido" e "recusa desvinculação de vínculo com tipo removido", ambos com o
+    pai removido direto pelo `DataSource` para não passar pela cascata. Falsificados antes do
+    commit: retirados os dois JOINs, os dois falham — a desvinculação é aceita e grava
+    `deletion_cause = 'MANUAL'`
+  - Commit: `feat(employee-documents)` · `3aec84f`
   - **Assimetria descoberta na TASK-043 e deixada de fora dela de propósito.** A desvinculação
-    (`employee-documents.service.ts`) segue usando `findActiveById`, sem os JOINs, então herda
+    (`employee-documents.service.ts`) usava `findActiveById`, sem os JOINs, então herdava
     exatamente a dependência da cascata que a TASK-043 removeu do caminho de envio. Corrigir
     ali teria mudado o comportamento de REQ-04 dentro de um commit que diz tratar de envio.
-  - **Menor gravidade que a TASK-043, e por isso P1.** Desvincular um vínculo cujo pai já foi
-    removido é operação idempotente na prática — o registro já está fora de toda consulta. O
-    que se ganha é uniformidade da regra de D-06, não correção de comportamento observável.
+  - **A justificativa original do nível P1 estava errada, e fica registrada.** Dizia que
+    desvincular vínculo de pai removido é "idempotente na prática" e que o ganho era
+    "uniformidade da regra de D-06, não correção de comportamento observável". Ao avaliar o
+    descarte desta task, a verificação mostrou o contrário: a propagação roda na mesma
+    transação que marca o pai, mas sob READ COMMITTED (D-05) o intervalo entre a leitura do
+    vínculo e o `UPDATE` admite remoção concorrente. O comportamento **é** observável, e o
+    teste de falsificação acima o demonstra. O nível P1 continua correto por outro motivo — a
+    janela é estreita —, não por ausência de efeito.
+  - **Consequência não prevista: `findActiveById` ficou sem chamador** e foi removido do
+    repositório, que passa de três `find...ById` para dois. Registrado em `design.md`, D-06,
+    junto com a decisão de que todo caminho de escrita usa a mesma consulta.
 
 - [x] **TASK-044** · P0 · `submissions` · adiciona consulta do historico de versoes
   - Requisitos: REQ-09.1, REQ-09.2, REQ-09.3
