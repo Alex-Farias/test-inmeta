@@ -1125,12 +1125,23 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     REQ-18.6 — duas submissions com o mesmo `submittedAt`, comparando a ordem entre duas
     chamadas, mesmo padrão de prova de estabilidade da TASK-056.
 
-- [ ] **TASK-059** · P0 · `statistics` · exclui removidos dos dois denominadores
+- [x] **TASK-059** · P0 · `statistics` · exclui removidos dos dois denominadores
   - Requisitos: REQ-16.5, REQ-14.5
   - Depende de: TASK-054, TASK-032, TASK-034
   - Aceite: colaborador, tipo e vínculo removidos saem de ambas as medidas de conformidade
   - Teste: `statistics.softdelete.integration.spec.ts` → "colaborador removido sai do denominador"
-  - Commit: `test(statistics)`
+  - Commit: `test(statistics)` · `f6040e2`
+  - **Sem código de produção novo** — mesmo padrão de TASK-018/019/027/035/050/052: os três
+    `JOIN ... AND deleted_at IS NULL` de D-06 já protegiam `calcularConformidadeGlobal` desde
+    a TASK-053/054.
+  - **Remoção direto pelo `DataSource`**, sem passar pelos services que fariam a cascata
+    (TASK-032/034) — isola o que o JOIN garante do que a propagação mascararia, mesma técnica
+    de TASK-043/045/050/052.
+  - **Teste expandido para três `it()` isolados** (colaborador, tipo, vínculo), em vez de um
+    só cenário combinado — se um dos três `JOIN`/filtro regredir, só o `it` correspondente
+    quebra, diagnóstico direto. Cada um usa um colaborador-controle sempre conforme mais um
+    segundo vínculo **não entregue** que a remoção deveria excluir: se a exclusão falhar, o
+    percentual final fica abaixo de 100, não passa por acidente em 0/0.
 
 - [ ] **TASK-060** · P0 · `statistics` · exclui removidos dos rankings e dos ultimos envios
   - Requisitos: REQ-17.4, REQ-18.4, REQ-14.5
