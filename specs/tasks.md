@@ -1285,12 +1285,36 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
     produção) e a captura ficaria vazia — falha real, detectada e corrigida antes deste
     commit.
 
-- [ ] **TASK-068** · P2 · `infra` · adiciona documentacao openapi
-  - Requisitos: REQ-22.1, REQ-22.2, REQ-22.3
+- [x] **TASK-068** · P2 · `infra` · adiciona documentacao openapi
+  - Requisitos: REQ-22.1, REQ-22.2, REQ-22.3, REQ-22.4
   - Depende de: TASK-053
   - Aceite: rotas de §4 documentadas a partir dos DTOs, com o catálogo de códigos de erro
-  - Teste: verificação manual documentada no README
-  - Commit: `chore(infra)`
+  - Teste: verificação manual — aplicação subida, `GET /docs` responde 200, `GET /docs-json`
+    gera as 13 rotas de §4 (2 employees + 2 document-types + 5 employee-documents/submissions
+    + 3 statistics + 1 health) e 19 schemas; `POST /employees` documentado com request
+    (`CreateEmployeeDto`), 201 (`Employee`) e 400/409 (`ErrorResponseDto`). Saída real
+    inspecionada.
+  - Commit: `chore(infra)` · `1e23aa0`
+  - **Retorno paginado/agregado é `interface`, não classe** (`ListaPaginadaDeX`,
+    `HistoricoDeEnvios`, `ConformidadeGlobal`, `TipoPendente`, `UltimoEnvio`) — nada além do
+    Swagger precisava dela como classe até aqui. Response DTOs novos (um por controller, em
+    `dto/`) existem só para o schema, sem mudar o tipo de retorno real do service; referências
+    nomeadas (`{id, name}`) ficam locais a cada DTO, espelhando o padrão já usado por
+    `VinculoPendente`/`TipoPendente`/`UltimoEnvio` (D-06/§2.1: sem importar entidade de outro
+    módulo).
+  - **Catálogo de erro em duas camadas**: `ErrorResponseDto` (espelha `CorpoDeErro` do
+    exception filter, `shared/`) descreve os sete códigos e o HTTP de cada um; a descrição da
+    API em `main.ts` repete a tabela por não haver lugar estrutural no OpenAPI para algo
+    transversal a toda rota.
+  - **Achado, não bloqueante**: `npm audit` acusa alta severidade em `js-yaml`, dependência
+    transitiva de `@nestjs/swagger@11.4.6` (DoS por tempo exponencial de parsing). Sem input
+    YAML de usuário nesta API, superfície de ataque real é baixa. Versão mantida travada em
+    `stack.md`; registrado aqui para rastreio.
+  - **Requisitos ampliado com REQ-22.4**, ausente na redação original da task (`tasks.md`
+    listava só REQ-22.1 a REQ-22.3, embora `requirements.md` já tivesse os quatro). Satisfeito
+    por construção — `@ApiProperty` decora os mesmos DTOs que o `ValidationPipe` global valida,
+    sem segunda definição — mas ficar fora da lista deixaria a auditoria de rastreabilidade da
+    TASK-074 sem onde marcar o requisito como coberto.
 
 - [ ] **TASK-069** · P2 · `infra` · adiciona suite e2e do fluxo completo
   - Requisitos: REQ-06, REQ-07, REQ-09, REQ-10, REQ-16
