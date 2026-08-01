@@ -397,7 +397,7 @@ rodam.
   - Depende de: TASK-022
   - Aceite: marca como removido sem apagar fisicamente e libera o nome para novo cadastro
   - Teste: `document-types.repository.integration.spec.ts` → "libera o nome após remoção"
-  - Commit: `feat(document-types)`
+  - Commit: `feat(document-types)` · `3ea7915`
 
 ---
 
@@ -1085,7 +1085,7 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     `deleted_at IS NULL` de D-06 já cobrem tipo/vínculo/colaborador removido; a prova
     explícita é a TASK-060, fora deste lote.
 
-- [ ] **TASK-057** · P1 · `statistics` · adiciona ultimos envios
+- [x] **TASK-057** · P1 · `statistics` · adiciona ultimos envios
   - Requisitos: REQ-18.1, REQ-18.2, REQ-18.3
   - Depende de: TASK-044
   - Aceite: envios mais recentes primeiro, identificando colaborador, tipo, versão e instante,
