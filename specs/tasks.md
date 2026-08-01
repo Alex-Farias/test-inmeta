@@ -11,7 +11,7 @@ Níveis conforme a tabela do `SKILL.md`: **P0** critério de avaliação declara
 cortado · **P1** escopo funcional obrigatório · **P2** diferencial declarado ·
 **P3** melhoria opcional.
 
-**74 tasks ativas** — P0 35 · P1 31 · P2 6 · P3 2 — mais quatro marcadores `[>]`
+**75 tasks ativas** — P0 35 · P1 32 · P2 6 · P3 2 — mais quatro marcadores `[>]`
 (TASK-016, 023, 029, 036). Nenhum `[~]`: nada foi descartado ainda.
 
 Corte começa em P3 e sobe, **respeitando o fecho transitivo abaixo** — não a coluna de nível.
@@ -45,7 +45,7 @@ ordem de corte real é o fecho transitivo, não a coluna de nível.
 ### O que dá para cortar
 
 Esta é a lista que se consulta sob pressão de prazo: as tasks **sem nenhum dependente P0**,
-que podem sair sem derrubar critério de avaliação. São **13 de 74**.
+que podem sair sem derrubar critério de avaliação. São **13 de 75**.
 
 **P3 — corte primeiro (2)**
 
@@ -81,10 +81,14 @@ log caem como bloco ou ficam como bloco.
 TASK-049 leva junto TASK-050. E cortar TASK-049 elimina os filtros que REQ-10.2 a REQ-10.4
 exigem — é escopo funcional declarado saindo, não polimento.
 
-**As 61 restantes são inegociáveis**: ou são P0, ou têm dependente P0. Note que outras 13
+**As 62 restantes são inegociáveis**: ou são P0, ou têm dependente P0. Note que outras 13
 tasks P0 também não têm dependente nenhum (TASK-008, 018, 019, 027, 042, 043, 047, 051, 052,
 059, 060, 061, 076) — ser folha não as torna cortáveis, porque P0 é critério de avaliação
 declarado.
+
+TASK-079 é P1 sem dependente e entraria na lista de cortáveis pelo critério, mas está
+concluída — a lista existe para decisão sob prazo, e task feita não é candidata a corte. Por
+isso a lista segue com 13 itens enquanto o total sobe para 75.
 
 ### Apêndice — cabeças de cadeia
 
@@ -1417,10 +1421,16 @@ Fase 3 do `spec-flow`. Origem "Entrega / fechamento" → **P0**: o README é o e
 maior peso do projeto, e a varredura final é o critério mais destacado do enunciado. Sem
 task, nenhum dos dois é rastreado.
 
-**Exceção de nível, declarada.** TASK-074 a TASK-076 referenciam REQ-00, cuja origem é
-Fundação (P1). O nível delas vem da origem **da task**, não do requisito que citam: são
-entregáveis de fechamento, avaliados diretamente. Esta é a única exceção ao mapeamento em que
-a origem da task prevalece sobre a do requisito.
+**Exceção de nível, declarada.** O nível destas tasks vem da origem **da task**, não de
+requisito: são entregáveis de fechamento, avaliados diretamente. Esta é a única exceção ao
+mapeamento em que a origem da task prevalece.
+
+Até a TASK-074, quatro delas declaravam `Requisitos:` — TASK-073 citava REQ-14 e as outras
+três, REQ-00 — apesar de a linha seguinte deste bloco declará-las isentas. A auditoria de
+rastreabilidade encontrou a contradição: rodando a própria regra que a TASK-074 aplica, essas
+quatro apareceriam ora como cobertas por requisito, ora como isentas, dependendo de qual das
+duas afirmações o leitor seguisse. Todas passaram a usar `Origem: Entrega / fechamento`, no
+padrão que a TASK-077 já usava — a categoria de origem **é** a rastreabilidade delas.
 
 - [x] **TASK-073** · P0 · `shared` · percorre o checklist completo de varredura de soft delete
   - Origem: Entrega / fechamento
@@ -1446,7 +1456,7 @@ a origem da task prevalece sobre a do requisito.
     distinguir os dois efeitos, o que o tornou mais forte que a versão original.
 
 - [ ] **TASK-074** · P0 · `shared` · audita rastreabilidade de requisito para task
-  - Requisitos: REQ-00
+  - Origem: Entrega / fechamento
   - Depende de: TASK-073
   - Aceite: todo `REQ-##` tem task concluída ou justificativa registrada de não
     implementação; requisito órfão é bug de processo. **Tasks de origem "Entrega /
@@ -1456,7 +1466,7 @@ a origem da task prevalece sobre a do requisito.
   - Commit: `docs`
 
 - [ ] **TASK-075** · P0 · `shared` · escreve readme final com decisoes e trade-offs
-  - Requisitos: REQ-00
+  - Origem: Entrega / fechamento
   - Depende de: TASK-074
   - Aceite: as nove seções da estrutura de `convencoes.md`, incluindo "o que ficou de fora e
     por quê", alimentada pelas tasks `[~]`
@@ -1464,7 +1474,7 @@ a origem da task prevalece sobre a do requisito.
   - Commit: `docs`
 
 - [ ] **TASK-076** · P0 · `infra` · valida a entrega em clone limpo
-  - Requisitos: REQ-00
+  - Origem: Entrega / fechamento
   - Depende de: TASK-075
   - Aceite: `git clone` em diretório novo, README seguido ao pé da letra, sistema sobe, migra
     e responde — funcionar na máquina onde foi construído não prova nada

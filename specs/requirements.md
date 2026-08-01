@@ -423,7 +423,7 @@ nada, apenas responde errado.
 **História:** Como gestor de RH, quero que uma operação que altera vários registros nunca
 seja aplicada pela metade, para que o sistema não fique num estado que ninguém pediu.
 
-Identificar quais operações são críticas faz parte do desafio. As seis abaixo são críticas
+Identificar quais operações são críticas faz parte do desafio. As quatro abaixo são críticas
 porque cada uma envolve mais de uma escrita relacionada, com invariante entre elas.
 
 **Critérios de aceite:**
@@ -432,8 +432,6 @@ porque cada uma envolve mais de uma escrita relacionada, com invariante entre el
    operações a seguir:
    - vinculação em lote (REQ-03)
    - envio e reenvio de documento (REQ-06, REQ-07)
-   - remoção de envio (REQ-08)
-   - desvinculação (REQ-04)
    - remoção de colaborador com propagação aos vínculos (REQ-12)
    - remoção de tipo de documento com propagação aos vínculos (REQ-13)
 2. SE qualquer escrita de uma operação crítica falhar, ENTÃO o sistema DEVE desfazer todas as
@@ -445,8 +443,10 @@ porque cada uma envolve mais de uma escrita relacionada, com invariante entre el
 5. QUANDO uma operação crítica falha, o sistema DEVE informar o motivo da falha, sem expor
    detalhe interno de implementação.
 6. O sistema DEVE tratar como **não críticas** as operações de escrita única sem invariante
-   entre registros — o cadastro de colaborador (REQ-01) e o de tipo de documento (REQ-02) —,
-   e essa classificação DEVE ser justificada na documentação de entrega.
+   entre registros — o cadastro de colaborador (REQ-01), o cadastro de tipo de documento
+   (REQ-02), a remoção de envio ativo (REQ-08) e a desvinculação (REQ-04) —, e essa
+   classificação DEVE ser justificada na documentação de entrega. A classificação revisada e
+   o critério que a produziu estão em `design.md`, D-04.
 
 ---
 

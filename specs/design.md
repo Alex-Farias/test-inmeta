@@ -409,6 +409,13 @@ linha da mesma tabela, e na desvinculação o `CHECK` de D-12 já garante por DD
 `deleted_at` e `deletion_cause` nunca divergem. O enunciado pede **discriminação** —
 superlistar demonstra tão pouco quanto sublistar.
 
+A revisão foi feita aqui e **não propagada para `requirements.md`**, que seguiu listando seis
+operações em REQ-15.1 e isentando apenas duas em REQ-15.6. A auditoria de rastreabilidade da
+TASK-074 encontrou a divergência e corrigiu o requisito para bater com esta tabela. Fica
+registrado porque é o tipo de coisa que uma revisão encontra e lê como decisão indefinida:
+duas fontes discordando sobre quantas operações são críticas não é detalhe de redação, é a
+resposta ao item do enunciado que pede exatamente essa discriminação.
+
 **Consequência.** A operação 4 é a mais cara: um tipo com muitos vínculos vira N atualizações
 numa transação. Aceitável neste volume; em produção viraria processamento assíncrono.
 Registrar no README como nota de escala.
@@ -417,7 +424,7 @@ Registrar no README como nota de escala.
 
 ### D-05 — Propagação de transação explícita
 
-**Contexto.** As seis operações de D-04 escrevem em mais de uma tabela, e duas delas cruzam
+**Contexto.** As quatro operações de D-04 escrevem em mais de uma tabela, e duas delas cruzam
 a fronteira entre módulos.
 
 **Decisão.** `TransactionRunner` na camada `shared`. Repositórios recebem `EntityManager`
