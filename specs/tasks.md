@@ -1217,13 +1217,18 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
 
 ## Diferenciais
 
-- [ ] **TASK-064** · P2 · `shared` · adiciona health check com verificacao do banco
+- [x] **TASK-064** · P2 · `shared` · adiciona health check com verificacao do banco
   - Requisitos: REQ-21.1, REQ-21.2
   - Depende de: TASK-004
   - Aceite: `/health` reporta estado da conexão com o banco; banco indisponível reporta
     estado não saudável, e não sucesso
-  - Teste: `health.integration.spec.ts` → "reporta não saudável com o banco fora"
-  - Commit: `feat(shared)`
+  - Teste: `health.integration.spec.ts` → "reporta não saudável com o banco fora", mais
+    "reporta saudável com o banco no ar" para a primeira metade do Aceite
+  - Commit: `feat(shared)` · `118009c`
+  - **`@nestjs/testing` entra como devDependency**, fora do padrão do resto da suíte de
+    integração (que constrói serviços à mão). O grafo interno do `HealthCheckService` do
+    Terminus (`HealthCheckExecutor`, `ERROR_LOGGER`, `TERMINUS_LOGGER`) não é pensado para
+    instanciação manual — é a via oficialmente suportada pela lib.
 
 - [ ] **TASK-065** · P2 · `shared` · adiciona logs estruturados com request id correlacionado
   - Requisitos: REQ-20.1, REQ-20.2, REQ-20.3
