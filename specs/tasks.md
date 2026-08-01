@@ -1092,7 +1092,23 @@ aberta — por isso cada propagação são **duas** tasks, não uma.
     com limite padrão e teto documentados
   - Teste: `statistics.repository.integration.spec.ts` → "retorna últimos envios do mais novo
     ao mais antigo"
-  - Commit: `feat(statistics)`
+  - Commit: `feat(statistics)` · `ccff373`
+  - **Limite padrão/teto confirmados com o humano**, por não estarem fixados em `design.md`
+    (mesmo padrão da TASK-011): reaproveita os **números** de D-15 (20/100), não o envelope
+    paginado — resposta é array simples, sem `page`/`total`, porque "últimos envios" é top-N.
+    `LIMITE_PADRAO`/`LIMITE_TETO` passaram a exportados de `pagination-query.dto.ts` para o
+    novo `LatestSubmissionsQueryDto` não duplicar os mesmos números mágicos.
+  - **Sem filtro de `is_active` desde já** — nada em REQ-18.1/18.2 pede envio ativo, e a
+    tradução direta do requisito já inclui versão superada por reenvio. Mesmo padrão de
+    "estende, não introduz" da TASK-038/041: a TASK-058 prova isso de ponta a ponta em vez de
+    introduzir o comportamento.
+  - **Teste expandido**: além do nome declarado, "aplica o limite informado" prova a metade
+    do Aceite que fica do lado do banco (o clamp do próprio DTO reaproveita a lógica já
+    provada em `pagination.dto.spec.ts`, sem teste redundante).
+  - **`design.md` corrigido no mesmo commit**: o exemplo de `/statistics/overview` trazia um
+    campo `totals` que nenhuma task jamais cobriu — removido para o exemplo não afirmar um
+    contrato que o sistema não entrega. Ganhou os exemplos JSON de `pending-types` e
+    `latest-submissions`.
 
 - [ ] **TASK-058** · P1 · `statistics` · inclui envios inativos nos ultimos envios
   - Requisitos: REQ-18.5, REQ-18.6
