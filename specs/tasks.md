@@ -1250,12 +1250,23 @@ Fecham o requisito mais destacado do enunciado. Dependem de o sistema estar inte
   - `@nestjs/testing` entra como devDependency (mesma decisão da TASK-064) para testar a
     correlação fim a fim via HTTP real.
 
-- [ ] **TASK-066** · P2 · `shared` · omite dado pessoal dos registros de execucao
+- [x] **TASK-066** · P2 · `shared` · omite dado pessoal dos registros de execucao
   - Requisitos: REQ-20.4
   - Depende de: TASK-065
   - Aceite: nome e e-mail de colaborador não aparecem em texto aberto nos logs
-  - Teste: `logger.redaction.spec.ts` → "redige e-mail de colaborador"
-  - Commit: `feat(shared)`
+  - Teste: `logger.redaction.spec.ts` → "redige e-mail de colaborador em req.body", mais
+    "redige e-mail e nome quando logados soltos" e "preserva campos que não são dado pessoal"
+  - Commit: `feat(shared)` · `d96320a`
+  - **Guarda preventiva, não decorativa de um vazamento que exista hoje** — mesma natureza da
+    regra de lint da TASK-063. Nenhum caminho de código atual loga corpo de requisição; a
+    tentativa de forçar `req.body` no serializer padrão do pino-http para a linha automática
+    de "request completed" alcançar o corpo **não funciona**: pino serializa o `req`
+    vinculado ao logger da requisição no instante em que o middleware do pino roda, antes do
+    body-parser preencher `request.body` — confirmado subindo a aplicação de verdade contra
+    um `POST /employees` real, log sempre com `body: undefined`. Nenhum erro de domínio
+    embute o valor do campo na mensagem (`DuplicatedResourceError` usa texto fixo). A
+    garantia de hoje é por construção; os paths (`req.body.*`, `body.*`, `email`/`name`
+    soltos) cobrem os formatos mais prováveis de um log explícito futuro.
 
 - [ ] **TASK-067** · P2 · `shared` · habilita log legivel fora de producao
   - Requisitos: REQ-20.5
