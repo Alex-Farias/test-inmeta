@@ -1511,13 +1511,37 @@ padrão que a TASK-077 já usava — a categoria de origem **é** a rastreabilid
     declarando pendência de algo que passou a existir seria o mesmo bug de processo que a
     TASK-074 foi criada para caçar.
 
-- [ ] **TASK-076** · P0 · `infra` · valida a entrega em clone limpo
+- [x] **TASK-076** · P0 · `infra` · valida a entrega em clone limpo
   - Origem: Entrega / fechamento
   - Depende de: TASK-075
   - Aceite: `git clone` em diretório novo, README seguido ao pé da letra, sistema sobe, migra
     e responde — funcionar na máquina onde foi construído não prova nada
-  - Teste: verificação manual documentada no README
-  - Commit: `chore(infra)`
+  - Teste: verificação manual documentada no README, seção "Validado em clone limpo".
+    Node 24.18.1 · npm 11.16.0 · Docker 29.1.3 · `postgres:18-alpine`, em 02/08/2026.
+    Roteiro executado: `cp .env.example .env` → `docker compose up -d` (healthy em ~12s) →
+    `npm install` → `npm run migration:run` → `npm run start:dev`. Depois `/health` `200` com
+    `database: up`, `/docs` servindo 19 rotas, `npm run seed`, `/employees` e
+    `/statistics/overview` respondendo sobre os dados populados, `npm run lint` sem violação e
+    as três suítes: 12/67 unitário, 17/106 integração, 1/1 E2E — os mesmos números da árvore
+    de trabalho
+  - Commit: `chore(infra)` · `f4a421a`
+  - **O banco vazio foi conferido, não assumido.** `docker compose down` (sem `-v`) antes de
+    clonar, e o clone subiu com volume próprio — `clone-limpo_postgres-data`. `\dt` antes da
+    migration respondeu `Did not find any tables`. Sem essa conferência a task provaria apenas
+    que a aplicação conecta num schema que já existia, que é exatamente o falso positivo que
+    o aceite ("funcionar na máquina onde foi construído não prova nada") existe para evitar.
+  - **Confirma a previsão da TASK-072.** `husky` reinstalado pelo `prepare` no `npm install`
+    do clone, com `core.hooksPath = .husky/_` reconstruído. Hook escrito à mão em
+    `.git/hooks/` não teria sobrevivido ao clone, e a TASK-072 registrou isso como a razão da
+    escolha — aqui a razão virou observação.
+  - **Achado: o compose não suporta duas cópias simultâneas.** `container_name:
+    documentacao-postgres` e a porta 5432 publicada no host são fixos, então o clone só subiu
+    depois de derrubar o compose original. **Documentado, não corrigido** — trocar por nome
+    derivado do projeto é decisão de infra fora do escopo desta task, e para quem clona uma
+    vez e avalia não muda nada. Registrado no README, na mesma seção da validação.
+  - **Nada além do README foi alterado.** A validação não encontrou passo faltante nem
+    comando errado no roteiro: as correções que o README precisava tinham sido feitas na
+    TASK-075, antes do clone existir. O único acréscimo é a declaração da própria validação.
 
 ---
 
