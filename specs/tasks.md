@@ -1480,13 +1480,36 @@ padrão que a TASK-077 já usava — a categoria de origem **é** a rastreabilid
     entre documentos, corrigidos no mesmo commit. O quinto era o `commitlint` recusando o
     commit desta própria auditoria, corrigido em `97f897b` por ser mudança de configuração.
 
-- [ ] **TASK-075** · P0 · `shared` · escreve readme final com decisoes e trade-offs
+- [x] **TASK-075** · P0 · `shared` · escreve readme final com decisoes e trade-offs
   - Origem: Entrega / fechamento
   - Depende de: TASK-074
   - Aceite: as nove seções da estrutura de `convencoes.md`, incluindo "o que ficou de fora e
     por quê", alimentada pelas tasks `[~]`
-  - Teste: verificação documentada no próprio README
-  - Commit: `docs`
+  - Teste: as nove seções conferidas uma a uma contra `convencoes.md`, e as três suítes
+    executadas de fato para alimentar a seção 7 — 12 suítes / 67 testes unitários, 17 / 106
+    de integração, 1 / 1 E2E, tudo verde
+  - Commit: `docs` · `228052b`
+  - **O README já existia; a task não era escrevê-lo, era fechá-lo.** `f0dae11` entregou a
+    estrutura. O que faltava para o aceite: um marcador `<!-- VERIFICAR -->` na seção 7 e a
+    metade "semântica de re-vínculo" da seção 4, que só existia como linha da tabela D-07.
+  - **Seção 8 verificada, não assumida.** "O que ficou de fora" é alimentada só pelas tasks
+    `[~]`, e a contagem confirma zero — nada foi descartado neste projeto. As quatro `[>]`
+    ficam de fora dessa seção por definição do marcador: foram executadas sob outro ID.
+  - **Três afirmações do README que o repositório contradizia**, encontradas ao conferir cada
+    uma contra a fonte em vez de reler o texto: `Node.js 24.16.0` contra `engines`
+    (`>= 24.16.0`), a contagem de commits, e uma frase truncada no meio (`segurança X
+    particidade`). Nenhuma das três quebra o sistema; todas quebram a confiança de quem lê o
+    README para decidir se confia no resto.
+  - **A contagem de commits ficou exata, e por isso nasce falsa.** `134` é o total após os
+    quatro commits do fechamento. Escrever o número certo exige escrevê-lo antes do último
+    commit que ele conta, e `--amend` está fora — o histórico é entregável. A alternativa
+    era largar a contagem aproximada; a exata foi escolhida com essa consequência aceita.
+  - **REQ-15.6 fechada.** Era a única meia pendência do projeto: `design.md` D-04 classificava
+    as quatro operações não críticas, mas a justificativa "na documentação de entrega" não
+    tinha onde existir. Está na seção "Atomicidade" do README, com o critério que separa as
+    quatro das críticas. `specs/rastreabilidade.md` foi atualizado no mesmo commit — deixá-lo
+    declarando pendência de algo que passou a existir seria o mesmo bug de processo que a
+    TASK-074 foi criada para caçar.
 
 - [ ] **TASK-076** · P0 · `infra` · valida a entrega em clone limpo
   - Origem: Entrega / fechamento
