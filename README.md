@@ -73,6 +73,26 @@ npm run test:integration      # integração — sobe Postgres via Testcontainer
 npm run test:e2e              # Playwright — exige o docker compose no ar
 ```
 
+### Validado em clone limpo
+
+O roteiro acima não é o que deveria funcionar — é o que foi executado, linha por
+linha, em `git clone` para um diretório novo, com volume Docker novo e banco
+vazio (`Did not find any tables` antes da migration). Funcionar na máquina onde
+o projeto foi construído não prova nada: prova que o autor sabe subi-lo.
+
+Em 02/08/2026, com Node 24.18.1, npm 11.16.0, Docker 29.1.3 e `postgres:18-alpine`.
+As quatro migrations criaram as cinco tabelas e os seis índices parciais do zero;
+`GET /health` respondeu `200` com `database: up`; `GET /docs` serviu o Swagger com
+as 19 rotas; `npm run seed` populou e `GET /statistics/overview` respondeu sobre
+os dados populados. Lint sem violação e as três suítes verdes no clone, com os
+mesmos números da árvore de trabalho.
+
+Uma ressalva que só o clone revelou: `docker-compose.yml` fixa
+`container_name: documentacao-postgres` e publica a porta 5432 no host, então
+**duas cópias do projeto não sobem ao mesmo tempo na mesma máquina** — a segunda
+falha por nome e porta ocupados. Para quem clona uma vez e avalia, é irrelevante;
+está registrado porque foi observado, não porque incomoda.
+
 ---
 
 ## Stack e ferramentas
