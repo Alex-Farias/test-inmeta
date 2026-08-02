@@ -58,20 +58,26 @@ comportamento que existe e é testado seria pior que o silêncio original.
 | **REQ-11.8** | o total paginado conta só quem satisfaz REQ-14 | `employees.repository.integration.spec.ts` e `document-types.repository.integration.spec.ts` → "exclui removido da listagem **e do total**"; `softdelete.sweep.integration.spec.ts` → itens 1, 2 e 3 afirmam `total`. Decisão em `design.md` §860 |
 | **REQ-13.7** | rejeita vinculação a tipo removido | Mesmo comportamento de REQ-03.3, que tem TASK-028 `[x]`. Provado em `employee-documents.service.spec.ts` e em `softdelete.sweep.integration.spec.ts` → item 11 |
 | **REQ-15.5** | falha de operação crítica informa o motivo sem vazar detalhe interno | `exception.filter.spec.ts` → "responde 500 genérico sem expor stack", que afirma a ausência de constraint, tabela, SQL, código do driver e quadro de pilha no corpo. O teste rotula REQ-19.4; é o mesmo comportamento |
-| **REQ-15.6** | classificar cadastros como não críticos **e justificar na documentação de entrega** | Classificação em `design.md` D-04, com o critério que a produziu. **A metade "documentação de entrega" depende do README (TASK-075)** — ver ressalva abaixo |
+| **REQ-15.6** | classificar cadastros como não críticos **e justificar na documentação de entrega** | Classificação em `design.md` D-04, com o critério que a produziu. A metade "documentação de entrega" venceu com a TASK-075 — `README.md`, seção "Atomicidade" — ver ressalva abaixo |
 | **REQ-16.7** | calcular as medidas por agregação no banco | `statistics.repository.ts` — os três métodos são SQL puro via `executor.query`, sem coleção carregada. TASK-070 validou o plano com `EXPLAIN` |
 | **REQ-17.5** | idem, para o ranking de tipos pendentes | `rankingDeTiposPendentes`, mesma construção. Coberto por `statistics.repository.integration.spec.ts` → "ordena tipos por pendencia com desempate estavel" e "inclui tipo ativo sem nenhuma pendencia" |
 
-### A única ressalva: REQ-15.6
+### A única ressalva: REQ-15.6 — fechada pela TASK-075
 
-É o único dos dez que **não** está inteiramente satisfeito hoje. Exige duas coisas, e só uma
-existe: a classificação está em `design.md` D-04; a justificativa "na documentação de entrega"
-depende do README, que é a TASK-075 e não foi escrito. Não é órfão de implementação — é
-critério cuja segunda metade vence junto com o README.
+Era o único dos dez que **não** estava inteiramente satisfeito quando esta auditoria foi
+escrita. Exige duas coisas, e só uma existia: a classificação estava em `design.md` D-04; a
+justificativa "na documentação de entrega" dependia do README, que é a TASK-075 e ainda não
+tinha sido escrito. Nunca foi órfão de implementação — era critério cuja segunda metade
+vencia junto com o README.
 
-Registrado aqui para que a TASK-075 não o esqueça: **o README precisa justificar por que
-cadastro de colaborador, cadastro de tipo, remoção de envio ativo e desvinculação não são
+Ficou registrado aqui para que a TASK-075 não o esquecesse: **o README precisa justificar por
+que cadastro de colaborador, cadastro de tipo, remoção de envio ativo e desvinculação não são
 operações críticas.** O enunciado cobra a discriminação, não a lista.
+
+**Atendido.** `README.md`, seção "Atomicidade": as quatro operações estão nomeadas, com o
+critério que as separa das críticas — escrita única de linha, sem invariante entre registros —
+e com o registro de que a classificação original listava seis e duas foram reclassificadas.
+É a discriminação que o critério pede, não só a lista. Nenhum `REQ` do projeto fica pendente.
 
 ---
 

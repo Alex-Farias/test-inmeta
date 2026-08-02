@@ -31,7 +31,7 @@ features.
 
 ### Pré-requisitos
 
-- Node.js 24.16.0
+- Node.js >= 24.16.0 (a versão mínima declarada em `engines`, no `package.json`)
 - Docker
 
 ### Subida do ambiente
@@ -59,9 +59,9 @@ npm run seed   # ts-node src/database/seed.ts
 ```
 
 **Por que subir o banco e rodar a migration são dois comandos, não um.**
-Por questões de segurança X particidade, um restart acidental do Postgres 
-não pode disparar uma alteração de schema que ninguém pediu especificamente.
-É a mesma razão pela qual `synchronize` do TypeORM fica
+Um restart acidental do Postgres não pode disparar uma alteração de schema que
+ninguém pediu — migration é decisão, não efeito colateral de o container voltar
+a subir. É a mesma razão pela qual `synchronize` do TypeORM fica
 `false` mesmo em desenvolvimento: nada muda o schema como consequência
 implícita de o processo simplesmente rodar.
 
@@ -273,6 +273,20 @@ Remoção em cascata (colaborador ou tipo) registra a causa em
 `deletion_cause`, distinguindo-a de desvinculação manual — sem isso, restaurar
 seletivamente depois de uma cascata seria impossível de fazer com segurança.
 
+**Semântica de re-vínculo.** Exigir de novo um par colaborador × tipo que já foi
+desvinculado cria um vínculo **novo**: `id` novo, contagem de versões
+recomeçando em 1. O vínculo anterior e todas as suas submissões continuam
+consultáveis como histórico, sem contar para pendência nem para estatística.
+A alternativa — "reviver" o antigo limpando `deleted_at` — é mais barata e
+ambígua: o histórico passaria a sugerir que a obrigação nunca foi interrompida,
+apagando justamente o intervalo em que aquele documento não era exigido, que é
+a informação pela qual alguém consulta o histórico. Nada disso precisa de
+tratamento especial no código: `uq_employee_document_active` é parcial, então a
+linha removida não ocupa o slot de unicidade, e `version` é sequencial por
+vínculo — sendo outro vínculo, a contagem nasce em 1 por construção do schema.
+Por ser afirmação sobre schema e não sobre lógica de aplicação, está coberta por
+teste de integração contra Postgres real, não assumida (D-07).
+
 ### Tratamento de concorrência
 
 A garantia mora no banco, não no código de aplicação: o índice único parcial
@@ -316,7 +330,15 @@ Jest + Testcontainers   →  repositórios, transações, concorrência, soft de
 Jest (unit)              →  regras de domínio puras, mapeamento de erros
 ```
 
-Cobertura na conclusão: <!-- VERIFICAR: contagem final de suítes/testes por camada -->.
+Cobertura na conclusão: **30 suítes, 174 testes** — 12 suítes e 67 testes
+unitários, 17 suítes e 106 testes de integração, 1 suíte e 1 teste E2E. A
+divisão de responsabilidade entre as três camadas está em
+[`specs/design.md`](./specs/design.md), seção 5.
+
+O peso está deliberadamente na integração, não na unidade: o que este projeto
+precisa provar — transação que reverte, índice parcial que rejeita o segundo
+ativo, JOIN que não vaza registro removido — são afirmações sobre o banco. Um
+repositório mockado as confirmaria sem verificar nenhuma delas.
 
 ---
 
@@ -338,7 +360,7 @@ aceite verificável e o teste que o prova. Nenhuma linha de código foi escrita
 sem uma task correspondente aprovada.
 
 **Commits.** Conventional Commits, escopo por módulo, uma task por commit. O
-histórico é 129 commits incrementais, sem squashing, sem `--amend` em commit já
+histórico é 134 commits incrementais, sem squashing, sem `--amend` em commit já
 enviado — o histórico é parte do entregável, não só metadado.
 
 ---
